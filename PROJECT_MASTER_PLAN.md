@@ -2578,4 +2578,180 @@ CREATE TABLE user_preferences (
 
 ---
 
+### 15. Known Issues & Technical Debt
+
+#### Issue: Amadeus Ephemeral Offer IDs (Solved Temporarily)
+
+**Problem Discovered:** 2025-12-10
+
+Amadeus generates new offer IDs (`roomId`) on every API call, causing booking flow breakage when users select a room but the backend fetches fresh pricing data with a new offer ID.
+
+**Example:**
+1. User views hotel details, sees room with `roomId: "IZFG437J4H"` at $896.92
+2. User clicks "Book Now" → booking page fetches fresh hotel details
+3. API returns new offer with `roomId: "X35ZXURXF1"` at same price
+4. Booking form tries to find room by old `roomId` → returns `undefined`
+5. Payment creation fails because `totalPrice: selectedRoom?.price || 0` evaluates to `0`
+
+**Impact:**
+- Payments failed with 400 Bad Request
+- User couldn't complete booking despite valid selection
+- Critical conversion blocker
+
+**Security Consideration:**
+Initial solution attempt was to pass price in URL parameters. This was **rejected** as a critical security vulnerability - users could manipulate pricing by editing URL parameters.
+
+**Current Solution (Temporary):**
+
+Implemented room matching with fallback strategy (see app/book/[hotelId]/[roomId]/BookingForm.tsx:90-99):
+
+```typescript
+// Match by roomId first (might fail due to ephemeral IDs)
+// Then match by roomType (UI continuity)
+// Then fallback to first available room
+const selectedRoom =
+  hotelDetails?.rooms.find(r => r.roomId === roomId) ||
+  (preferredRoomType ? hotelDetails?.rooms.find(r => r.roomType === preferredRoomType) : null) ||
+  hotelDetails?.rooms[0]
+
+// CRITICAL: Always use fresh API pricing (server-authoritative)
+totalPrice: selectedRoom.price
+```
+
+**Files Modified:**
+- `lib/url-helpers.ts` - Added `roomType` parameter to `buildBookingUrl()`
+- `app/hotel/[city]/[slug]/[hotelId]/HotelDetails.tsx` - Pass `roomType` when building booking URLs
+- `app/book/[hotelId]/[roomId]/page.tsx` - Accept and pass `type` search param
+- `app/book/[hotelId]/[roomId]/BookingForm.tsx` - Implement fallback matching logic
+
+**Limitations of Current Solution:**
+- Assumes `roomType` is unique within a hotel's offerings
+- Won't work well for hotels with many room variants (e.g., "Deluxe King - Ocean View" vs "Deluxe King - City View")
+- Fallback to first room could mismatch user intent if roomType doesn't match
+
+**Preferred Future Solution: Redis Offer Caching (Option 3)**
+
+Instead of relying on roomType matching, cache the original Amadeus offer when user clicks "Book Now":
+
+```typescript
+// When user clicks "Book Now" on hotel details page
+const offerCacheKey = `amadeus_offer:${offerId}:${Date.now()}`
+await redis.setex(offerCacheKey, 900, JSON.stringify(offer)) // 15 min TTL
+
+// Redirect to booking page with cache key
+window.location.href = `/book/${hotelId}/${roomId}?offerKey=${offerCacheKey}`
+
+// On booking page, retrieve cached offer
+const cachedOffer = await redis.get(offerCacheKey)
+if (cachedOffer) {
+  // Use cached offer for pricing/details
+  totalPrice = cachedOffer.price
+} else {
+  // Fallback: fetch fresh offer and show "Price may have changed" warning
+}
+```
+
+**Why Redis Caching is Better:**
+- ✅ Preserves exact offer user selected (price, room details, availability)
+- ✅ Works with hotels having many room variants
+- ✅ Graceful degradation if cache expires (fetch fresh + warn user)
+- ✅ Fast lookups (< 10ms)
+- ✅ Automatic expiration (no stale data)
+- ✅ Can extend to other providers with similar ephemeral ID issues
+
+**Implementation Priority:** Medium (revisit after MVP Phase 2)
+
+---
+
+#### Redis Offer Caching - Detailed Implementation Plan
+
+**Provider Choice: Vercel KV**
+- Built on Upstash Redis (can migrate later if needed)
+- Free tier: 30,000 commands/month
+- Seamless Vercel integration via `@vercel/kv`
+- Edge-compatible, <10ms latency
+- Auto-configured environment variables
+
+**Offer Cache Schema:**
+
+```typescript
+interface CachedOffer {
+  providerId: string
+  providerHotelId: string
+  room: {
+    roomId: string
+    roomType: string
+    description?: string
+    bedType?: string
+    maxOccupancy?: number
+    price: number
+    currency: string
+  }
+  checkInDate: string
+  checkOutDate: string
+  adults: number
+  rooms: number
+  hotelName: string
+  hotelAddress: string
+  cachedAt: number
+  expiresAt: number
+}
+
+// Cache key format: offer:providerId:hotelId:roomId:timestamp
+// Example: "offer:amadeus:BGLONBGB:IZFG437J4H:1702234567890"
+// TTL: 900 seconds (15 minutes)
+```
+
+**Implementation Steps:**
+
+1. **Setup Vercel KV** (lib/offer-cache.ts)
+   - Install `@vercel/kv` package
+   - Create caching utility functions: `cacheOffer()`, `getCachedOffer()`, `deleteCachedOffer()`
+   - 15-minute TTL for offers
+
+2. **Update HotelDetails.tsx**
+   - Change "Book Now" link to button with onClick handler
+   - Call `cacheOffer()` before redirecting
+   - Pass cache key in URL: `?offerKey={cacheKey}`
+   - Track cache key in PostHog event
+
+3. **Update BookingForm.tsx**
+   - Accept `offerKey` prop from search params
+   - Try cache first: `getCachedOffer(offerKey)`
+   - On cache hit: Use cached offer data, skip API call
+   - On cache miss: Fetch fresh from API (existing logic)
+   - Compare prices if both available, show warning if changed
+
+4. **Add Price Change Warning UI**
+   - Yellow alert banner when cached price ≠ fresh price
+   - Show old vs new price
+   - User can proceed with new price
+
+5. **Monitoring**
+   - PostHog events: `offer_cache_hit`, `offer_cache_miss`, `offer_price_changed`
+   - Track cache hit rate, price change frequency
+
+**Benefits:**
+- ✅ Exact price/room preservation
+- ✅ Works with unlimited room variants
+- ✅ Graceful cache expiration handling
+- ✅ Better UX with price change warnings
+- ✅ Scalable to other providers
+
+**Files to Modify:**
+- NEW: `lib/offer-cache.ts` (utility functions)
+- `app/hotel/[city]/[slug]/[hotelId]/HotelDetails.tsx` (cache on click)
+- `app/book/[hotelId]/[roomId]/page.tsx` (pass offerKey)
+- `app/book/[hotelId]/[roomId]/BookingForm.tsx` (use cached offer)
+- `package.json` (add @vercel/kv dependency)
+
+**Testing Scenarios:**
+1. Cache hit, price unchanged (happy path)
+2. Cache miss, fetch fresh data (graceful degradation)
+3. Cache hit, price changed (show warning)
+4. Direct URL access without offerKey (backward compatible)
+5. Multiple room variants (verify correct room cached)
+
+---
+
 **This document is the source of truth for the Travel Bids project. All development decisions should reference and align with this plan.**

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import type { HotelDetails as HotelDetailsType } from '@/lib/hotel-providers/types'
-import { buildBookingUrl, formatDateDisplay, calculateNights, CITY_NAMES } from '@/lib/url-helpers'
+import { formatDateDisplay, calculateNights, CITY_NAMES } from '@/lib/url-helpers'
 import { posthog } from '@/lib/posthog'
 
 interface HotelDetailsProps {
@@ -225,16 +225,6 @@ export function HotelDetails({
             <h2 className="text-2xl font-semibold text-gray-900 mb-4">Available Rooms</h2>
             <div className="space-y-4">
               {hotel.rooms.map((room) => {
-                const bookingUrl = buildBookingUrl({
-                  providerHotelId,
-                  roomId: room.roomId,
-                  providerId,
-                  checkInDate,
-                  checkOutDate,
-                  adults,
-                  rooms,
-                })
-
                 return (
                   <div key={room.roomId} className="border border-gray-200 rounded-lg p-4 hover:border-blue-600 transition-colors">
                     <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -274,28 +264,67 @@ export function HotelDetails({
                             ${(room.price / nights).toFixed(2)}/night
                           </div>
                         </div>
-                        <a
-                          href={bookingUrl}
-                          onClick={() => {
-                            posthog.capture('booking_initiated', {
-                              hotel_id: providerHotelId,
-                              hotel_name: hotel.name,
-                              provider: providerId,
-                              room_id: room.roomId,
-                              room_type: room.roomType,
-                              price: room.price,
-                              city: cityCode,
-                              check_in: checkInDate,
-                              check_out: checkOutDate,
-                              nights,
-                              adults,
-                              rooms
-                            })
+                        <button
+                          onClick={async () => {
+                            try {
+                              // Cache the offer via API before redirecting to booking page
+                              const cacheResponse = await fetch('/api/cache/offer', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                  providerId,
+                                  providerHotelId,
+                                  room,
+                                  searchParams: {
+                                    checkInDate,
+                                    checkOutDate,
+                                    adults,
+                                    rooms
+                                  },
+                                  hotelInfo: {
+                                    name: hotel.name,
+                                    address: hotel.address
+                                  }
+                                })
+                              })
+
+                              if (!cacheResponse.ok) {
+                                console.error('Failed to cache offer, proceeding without cache')
+                              }
+
+                              const { cacheKey } = await cacheResponse.json()
+
+                              // Track booking initiated with cache key
+                              posthog.capture('booking_initiated', {
+                                hotel_id: providerHotelId,
+                                hotel_name: hotel.name,
+                                provider: providerId,
+                                room_id: room.roomId,
+                                room_type: room.roomType,
+                                price: room.price,
+                                city: cityCode,
+                                check_in: checkInDate,
+                                check_out: checkOutDate,
+                                nights,
+                                adults,
+                                rooms,
+                                cache_key: cacheKey
+                              })
+
+                              // Redirect to booking page with cache key
+                              const bookingUrl = `/book/${providerHotelId}/${room.roomId}?provider=${providerId}&checkIn=${checkInDate}&checkOut=${checkOutDate}&adults=${adults}&rooms=${rooms}&offerKey=${encodeURIComponent(cacheKey)}`
+                              window.location.href = bookingUrl
+                            } catch (error) {
+                              console.error('Error caching offer:', error)
+                              // Fallback: redirect without cache key
+                              const bookingUrl = `/book/${providerHotelId}/${room.roomId}?provider=${providerId}&checkIn=${checkInDate}&checkOut=${checkOutDate}&adults=${adults}&rooms=${rooms}`
+                              window.location.href = bookingUrl
+                            }
                           }}
                           className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-6 rounded-lg transition-colors"
                         >
                           Book Now
-                        </a>
+                        </button>
                       </div>
                     </div>
                   </div>

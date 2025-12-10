@@ -161,6 +161,7 @@ export function parseHotelUrl(segments: {
 
 /**
  * Generate booking URL: /book/{hotel-id}/{room-id}
+ * Includes roomType for UI continuity (not for pricing - always use server-authoritative prices)
  */
 export function buildBookingUrl(params: {
   providerHotelId: string
@@ -170,6 +171,7 @@ export function buildBookingUrl(params: {
   checkOutDate: string
   adults: number
   rooms: number
+  roomType?: string
 }): string {
   const searchParams = new URLSearchParams({
     provider: params.providerId,
@@ -178,6 +180,11 @@ export function buildBookingUrl(params: {
     adults: params.adults.toString(),
     rooms: params.rooms.toString(),
   })
+
+  // Add room type for matching preference (not for pricing)
+  if (params.roomType) {
+    searchParams.set('type', params.roomType)
+  }
 
   return `/book/${params.providerHotelId}/${params.roomId}?${searchParams.toString()}`
 }

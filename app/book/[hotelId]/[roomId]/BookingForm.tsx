@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import type { HotelDetails } from '@/lib/hotel-providers/types'
 import { formatDateDisplay, calculateNights, buildConfirmationUrl } from '@/lib/url-helpers'
 import { posthog } from '@/lib/posthog'
+import type { CachedOffer } from '@/lib/offer-cache'
 
 interface BookingFormProps {
   hotelId: string
@@ -14,6 +15,8 @@ interface BookingFormProps {
   checkOutDate: string
   adults: number
   rooms: number
+  preferredRoomType?: string
+  offerKey?: string
 }
 
 interface GuestDetails {
@@ -32,9 +35,14 @@ export function BookingForm({
   checkOutDate,
   adults,
   rooms,
+  preferredRoomType,
+  offerKey,
 }: BookingFormProps) {
   const router = useRouter()
   const [hotelDetails, setHotelDetails] = useState<HotelDetails | null>(null)
+  const [cachedOffer, setCachedOffer] = useState<CachedOffer | null>(null)
+  const [usedCache, setUsedCache] = useState(false)
+  const [priceChanged, setPriceChanged] = useState(false)
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -47,10 +55,50 @@ export function BookingForm({
     specialRequests: '',
   })
 
-  // Fetch hotel details to display booking summary
+  // Fetch hotel details or use cached offer
   useEffect(() => {
     async function fetchDetails() {
       try {
+        // FIRST: Try to use cached offer if offerKey provided
+        if (offerKey) {
+          console.log('[BookingForm] Attempting to retrieve cached offer:', offerKey)
+
+          try {
+            const cacheResponse = await fetch(`/api/cache/offer?key=${encodeURIComponent(offerKey)}`)
+
+            if (cacheResponse.ok) {
+              const { offer } = await cacheResponse.json()
+              console.log('[BookingForm] Cache HIT - using cached offer')
+              setCachedOffer(offer)
+              setUsedCache(true)
+              setLoading(false)
+
+              // Track cache hit
+              posthog.capture('offer_cache_hit', {
+                cache_key: offerKey,
+                provider: providerId,
+                hotel_id: hotelId,
+                price: offer.room.price
+              })
+
+              return // Skip API call, use cached data
+            }
+          } catch (error) {
+            console.error('[BookingForm] Error retrieving cached offer:', error)
+          }
+
+          // Cache miss - log and fall through to API call
+          console.warn('[BookingForm] Cache MISS - fetching fresh data from API')
+          posthog.capture('offer_cache_miss', {
+            cache_key: offerKey,
+            provider: providerId,
+            hotel_id: hotelId,
+            reason: 'not_found_or_expired'
+          })
+        }
+
+        // FALLBACK: Fetch fresh data from API
+        console.log('[BookingForm] Fetching fresh hotel details from API')
         const response = await fetch('/api/hotels/details', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -69,7 +117,25 @@ export function BookingForm({
 
         const data = await response.json()
         setHotelDetails(data.hotel)
+
+        // Check if price changed from cached offer (if we had one but it expired)
+        if (cachedOffer) {
+          const freshRoom = data.hotel.rooms.find((r: any) => r.roomType === cachedOffer.room.roomType)
+          if (freshRoom && freshRoom.price !== cachedOffer.room.price) {
+            console.warn('[BookingForm] Price changed from cached offer:', cachedOffer.room.price, '→', freshRoom.price)
+            setPriceChanged(true)
+
+            // Track price change
+            posthog.capture('offer_price_changed', {
+              cache_key: offerKey,
+              old_price: cachedOffer.room.price,
+              new_price: freshRoom.price,
+              difference: freshRoom.price - cachedOffer.room.price
+            })
+          }
+        }
       } catch (err: any) {
+        console.error('[BookingForm] Error fetching details:', err)
         setError(err.message)
       } finally {
         setLoading(false)
@@ -77,7 +143,7 @@ export function BookingForm({
     }
 
     fetchDetails()
-  }, [hotelId, providerId, checkInDate, checkOutDate, adults, rooms])
+  }, [hotelId, providerId, checkInDate, checkOutDate, adults, rooms, offerKey])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -85,7 +151,27 @@ export function BookingForm({
     setError(null)
 
     try {
-      const selectedRoom = hotelDetails?.rooms.find(r => r.roomId === roomId)
+      // Determine which room data to use
+      // Priority: 1. Cached offer, 2. Fresh API data by roomId, 3. Fresh API by roomType, 4. First room
+      let roomToBook
+
+      if (usedCache && cachedOffer) {
+        // Use cached offer data (already validated and price-locked)
+        console.log('[BookingForm] Using cached offer for booking:', cachedOffer.room.price)
+        roomToBook = cachedOffer.room
+      } else {
+        // Fallback to fresh API data with matching logic
+        roomToBook =
+          hotelDetails?.rooms.find(r => r.roomId === roomId) ||
+          (preferredRoomType ? hotelDetails?.rooms.find(r => r.roomType === preferredRoomType) : null) ||
+          hotelDetails?.rooms[0]
+      }
+
+      if (!roomToBook) {
+        throw new Error('No rooms available')
+      }
+
+      console.log('[BookingForm] Room to book:', roomToBook.roomType, 'Price:', roomToBook.price)
 
       // Step 1: Create booking in database with 'pending' status
       const bookingResponse = await fetch('/api/bookings/create', {
@@ -93,14 +179,14 @@ export function BookingForm({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           hotelId,
-          roomId,
+          roomId: roomToBook.roomId, // Use roomId from cached offer or fresh API
           providerId,
           checkInDate,
           checkOutDate,
           adults,
           rooms,
           guestDetails,
-          totalPrice: selectedRoom?.price || 0,
+          totalPrice: roomToBook.price, // Use price from cached offer or fresh API (server-authoritative)
         }),
       })
 
@@ -111,20 +197,24 @@ export function BookingForm({
       const bookingData = await bookingResponse.json()
 
       // Track booking initiated
+      const hotelName = usedCache && cachedOffer ? cachedOffer.hotelName : hotelDetails?.name
+
       posthog.capture('booking_initiated', {
         booking_id: bookingData.bookingId,
         hotel_id: hotelId,
-        hotel_name: hotelDetails?.name,
+        hotel_name: hotelName,
         provider: providerId,
-        room_id: roomId,
-        room_type: selectedRoom?.roomType,
-        price: selectedRoom?.price,
+        room_id: roomToBook.roomId,
+        room_type: roomToBook.roomType,
+        price: roomToBook.price,
         check_in: checkInDate,
         check_out: checkOutDate,
         nights: calculateNights(checkInDate, checkOutDate),
         adults,
         rooms,
-        guest_email: guestDetails.email
+        guest_email: guestDetails.email,
+        used_cache: usedCache,
+        cache_key: offerKey
       })
 
       // Step 2: Create Stripe Checkout Session
@@ -133,10 +223,10 @@ export function BookingForm({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           bookingId: bookingData.bookingId,
-          hotelName: hotelDetails?.name,
+          hotelName,
           checkInDate,
           checkOutDate,
-          totalPrice: selectedRoom?.price || 0,
+          totalPrice: roomToBook.price, // Use price from cached offer or fresh API (server-authoritative)
           guestEmail: guestDetails.email,
         }),
       })
@@ -185,7 +275,16 @@ export function BookingForm({
     )
   }
 
-  const selectedRoom = hotelDetails?.rooms.find(r => r.roomId === roomId)
+  // Determine which data to display (cached offer or fresh API data)
+  const displayRoom = usedCache && cachedOffer
+    ? cachedOffer.room
+    : (hotelDetails?.rooms.find(r => r.roomId === roomId) ||
+       (preferredRoomType ? hotelDetails?.rooms.find(r => r.roomType === preferredRoomType) : null) ||
+       hotelDetails?.rooms[0])
+
+  const displayHotelName = usedCache && cachedOffer ? cachedOffer.hotelName : hotelDetails?.name
+  const displayHotelAddress = usedCache && cachedOffer ? cachedOffer.hotelAddress : hotelDetails?.address
+
   const nights = calculateNights(checkInDate, checkOutDate)
 
   return (
@@ -194,6 +293,23 @@ export function BookingForm({
         {/* Header */}
         <h1 className="text-3xl font-bold text-gray-900 mb-2">Complete Your Booking</h1>
         <p className="text-gray-600 mb-8">Please fill in your details to confirm your reservation</p>
+
+        {/* Price Change Warning */}
+        {priceChanged && (
+          <div className="mb-6 bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+            <div className="flex items-start gap-3">
+              <svg className="w-6 h-6 text-yellow-600 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+              </svg>
+              <div>
+                <h3 className="font-semibold text-yellow-900 mb-1">Price Updated</h3>
+                <p className="text-sm text-yellow-800">
+                  The room price has been updated since you selected it. The new price is shown below.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Guest Details Form */}
@@ -315,11 +431,11 @@ export function BookingForm({
             <div className="bg-white rounded-lg shadow-md p-6 sticky top-6">
               <h2 className="text-xl font-semibold text-gray-900 mb-4">Booking Summary</h2>
 
-              {hotelDetails && (
+              {(hotelDetails || cachedOffer) && (
                 <div className="space-y-4">
                   <div>
-                    <h3 className="font-semibold text-gray-900">{hotelDetails.name}</h3>
-                    <p className="text-sm text-gray-600">{hotelDetails.address}</p>
+                    <h3 className="font-semibold text-gray-900">{displayHotelName}</h3>
+                    <p className="text-sm text-gray-600">{displayHotelAddress}</p>
                   </div>
 
                   <div className="pt-4 border-t border-gray-200">
@@ -347,12 +463,12 @@ export function BookingForm({
                     </div>
                   </div>
 
-                  {selectedRoom && (
+                  {displayRoom && (
                     <div className="pt-4 border-t border-gray-200">
                       <div className="text-sm mb-2 text-gray-600">Room Type</div>
-                      <div className="font-medium text-gray-900">{selectedRoom.roomType}</div>
-                      {selectedRoom.bedType && (
-                        <div className="text-sm text-gray-600 mt-1">{selectedRoom.bedType}</div>
+                      <div className="font-medium text-gray-900">{displayRoom.roomType}</div>
+                      {displayRoom.bedType && (
+                        <div className="text-sm text-gray-600 mt-1">{displayRoom.bedType}</div>
                       )}
                     </div>
                   )}
@@ -362,10 +478,10 @@ export function BookingForm({
                       <span className="text-lg font-semibold text-gray-900">Total</span>
                       <div className="text-right">
                         <div className="text-2xl font-bold text-gray-900">
-                          ${selectedRoom?.price.toFixed(2) || '0.00'}
+                          ${displayRoom?.price.toFixed(2) || '0.00'}
                         </div>
                         <div className="text-sm text-gray-600">
-                          ${((selectedRoom?.price || 0) / nights).toFixed(2)}/night
+                          ${((displayRoom?.price || 0) / nights).toFixed(2)}/night
                         </div>
                       </div>
                     </div>

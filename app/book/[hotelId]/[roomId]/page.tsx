@@ -12,6 +12,8 @@ export default async function BookingPage({
     checkOut?: string
     adults?: string
     rooms?: string
+    type?: string
+    offerKey?: string
   }>
 }) {
   const resolvedParams = await params
@@ -58,6 +60,8 @@ export default async function BookingPage({
           checkOutDate={resolvedSearchParams.checkOut}
           adults={parseInt(resolvedSearchParams.adults || '2')}
           rooms={parseInt(resolvedSearchParams.rooms || '1')}
+          preferredRoomType={resolvedSearchParams.type}
+          offerKey={resolvedSearchParams.offerKey}
         />
       </Suspense>
     </div>
