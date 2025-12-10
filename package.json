@@ -1,0 +1,46 @@
+{
+  "name": "temp-next",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint",
+    "test:prisma": "dotenv -e .env.local -- tsx scripts/test-prisma.ts",
+    "test:amadeus": "dotenv -e .env.local -- tsx scripts/test-amadeus.ts",
+    "test:flow": "dotenv -e .env.local -- tsx scripts/test-flow.ts"
+  },
+  "dependencies": {
+    "@prisma/adapter-pg": "^7.1.0",
+    "@prisma/client": "^6.19.1",
+    "@supabase/supabase-js": "^2.87.1",
+    "@tanstack/react-query": "^5.90.12",
+    "@tanstack/react-query-devtools": "^5.91.1",
+    "amadeus": "^11.0.0",
+    "dotenv": "^17.2.3",
+    "js-cookie": "^3.0.5",
+    "next": "16.0.8",
+    "pg": "^8.16.3",
+    "posthog-js": "^1.302.2",
+    "react": "19.2.1",
+    "react-dom": "19.2.1",
+    "uuid": "^13.0.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/js-cookie": "^3.0.6",
+    "@types/node": "^20",
+    "@types/pg": "^8.15.6",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "@types/uuid": "^10.0.0",
+    "dotenv-cli": "^11.0.0",
+    "eslint": "^9",
+    "eslint-config-next": "16.0.8",
+    "prisma": "^6.19.1",
+    "tailwindcss": "^4",
+    "tsx": "^4.21.0",
+    "typescript": "^5"
+  }
+}

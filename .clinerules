@@ -1,0 +1,66 @@
+# Travel Bids Project Rules
+
+## Source of Truth
+PROJECT_MASTER_PLAN.md is the source of truth for all architectural decisions, tech stack choices, and implementation phases. Always consult this document before making significant decisions.
+
+## Technology Stack (Do Not Deviate)
+- Frontend: Next.js 14+ with App Router, React, TypeScript, TanStack Query
+- Backend: Supabase (Auth, Database, Edge Functions), Prisma ORM
+- Database: PostgreSQL (via Supabase)
+- Hosting: Vercel with Edge Functions
+- Analytics: PostHog (primary), Google Analytics 4 (ad attribution)
+- Payments: Stripe
+- Email: Resend or SendGrid
+- AI: Anthropic Claude API or OpenAI
+
+## Development Principles
+1. Follow the phase breakdown in PROJECT_MASTER_PLAN.md section 9
+2. Always check database schema in section 6 before creating/modifying tables
+3. Reference AI agent workflows in sections 3 and 3B when building AI features
+4. Use TypeScript strict mode - no any types
+5. Mobile-first design (60% of traffic is mobile)
+6. Performance targets: Lighthouse 90+, LCP <2.5s
+7. Never commit secrets or API keys
+
+## Phase-Based Development
+Current Phase: Phase 1 - Foundation (Weeks 1-2)
+- Focus on basic hotel listing, landing pages, tracking, and analytics integration
+- Do NOT implement features from later phases unless explicitly requested
+- Mark phase checkboxes in master plan as completed
+
+## AI Implementation Rules
+- All AI agents must have human-in-the-loop approval (see section 3)
+- Store all AI predictions in ai_predictions table for learning
+- Never auto-deploy AI suggestions without explicit approval
+- Follow self-learning architecture in section 3B
+
+## Code Quality Standards
+- Use Prisma for all database queries (type-safe, prevents SQL injection)
+- ESLint + Prettier for formatting
+- Write tests for critical booking flow
+- Use React Server Components where possible
+- Edge functions for A/B testing and feature flags
+
+## Naming Conventions
+- Database: snake_case (user_id, created_at)
+- TypeScript/JS: camelCase (userId, createdAt)
+- Components: PascalCase (HotelCard, BookingFlow)
+- Files: kebab-case (hotel-card.tsx, booking-flow.tsx)
+
+## Before Starting New Features
+1. Check if feature is in current phase
+2. Review relevant section in PROJECT_MASTER_PLAN.md
+3. Check database schema for related tables
+4. Confirm tech stack alignment
+
+## When User Asks for Changes
+- If change conflicts with master plan, mention it and ask for confirmation
+- Suggest alternatives that align with the plan
+- Update PROJECT_MASTER_PLAN.md if significant architecture changes approved
+
+## Key Files to Reference
+- PROJECT_MASTER_PLAN.md - Overall architecture and phases
+- Database schema - Section 6 (tables for core app, AI, tracking)
+- AI agents - Section 3 and 3B
+- Success metrics - Section 11
+- Risk mitigation - Section 10

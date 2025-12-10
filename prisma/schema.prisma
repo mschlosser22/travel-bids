@@ -1,0 +1,484 @@
+// Prisma Schema for Travel Bids
+// Based on PROJECT_MASTER_PLAN.md Section 6
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ===================================
+// CORE TABLES - Phase 1
+// ===================================
+
+model User {
+  id              String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  email           String?  @unique
+  sessionId       String   @map("session_id")
+  utmSource       String?  @map("utm_source")
+  utmMedium       String?  @map("utm_medium")
+  utmCampaign     String?  @map("utm_campaign")
+  utmTerm         String?  @map("utm_term")
+  utmContent      String?  @map("utm_content")
+  deviceType      String?  @map("device_type")
+  locationCountry String?  @map("location_country")
+  locationCity    String?  @map("location_city")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @default(now()) @updatedAt @map("updated_at")
+
+  // Relations
+  pageViews            PageView[]
+  events               Event[]
+  bookings             Booking[]
+  experimentAssignments ExperimentAssignment[]
+
+  @@index([sessionId])
+  @@map("users")
+}
+
+model PageView {
+  id         String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  userId     String?  @map("user_id") @db.Uuid
+  sessionId  String   @map("session_id")
+  pageUrl    String   @map("page_url")
+  pageTitle  String?  @map("page_title")
+  referrer   String?
+  metadata   Json?
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  // Relations
+  user User? @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([sessionId])
+  @@map("page_views")
+}
+
+model Event {
+  id              String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  userId          String?  @map("user_id") @db.Uuid
+  sessionId       String   @map("session_id")
+  eventName       String   @map("event_name")
+  eventProperties Json?    @map("event_properties")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  // Relations
+  user User? @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([sessionId])
+  @@map("events")
+}
+
+// ===================================
+// HOTEL & INVENTORY
+// ===================================
+
+model Hotel {
+  id          String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  name        String
+  slug        String   @unique
+  description String?
+  address     String?
+  city        String?
+  country     String?
+  starRating  Int?     @map("star_rating")
+  images      Json?
+  amenities   Json?
+  metadata    Json?
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at")
+
+  // Relations
+  rooms    Room[]
+  bookings Booking[]
+
+  @@map("hotels")
+}
+
+model Room {
+  id           String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  hotelId      String   @map("hotel_id") @db.Uuid
+  roomType     String   @map("room_type")
+  description  String?
+  maxOccupancy Int?     @map("max_occupancy")
+  basePrice    Decimal? @map("base_price") @db.Decimal(10, 2)
+  images       Json?
+  amenities    Json?
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @default(now()) @updatedAt @map("updated_at")
+
+  // Relations
+  hotel        Hotel          @relation(fields: [hotelId], references: [id])
+  availability Availability[]
+  bookings     Booking[]
+
+  @@map("rooms")
+}
+
+model Availability {
+  id             String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  roomId         String   @map("room_id") @db.Uuid
+  date           DateTime @db.Date
+  availableCount Int      @map("available_count")
+  price          Decimal  @db.Decimal(10, 2)
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  // Relations
+  room Room @relation(fields: [roomId], references: [id])
+
+  @@unique([roomId, date])
+  @@index([roomId, date])
+  @@map("availability")
+}
+
+// ===================================
+// BOOKINGS
+// ===================================
+
+model Booking {
+  id              String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  userId          String?  @map("user_id") @db.Uuid
+  hotelId         String?  @map("hotel_id") @db.Uuid
+  roomId          String?  @map("room_id") @db.Uuid
+
+  // Provider information
+  providerName        String?  @map("provider_name") // "amadeus", "expedia", etc.
+  providerHotelId     String?  @map("provider_hotel_id") // Provider's hotel ID
+  providerBookingId   String?  @map("provider_booking_id") // Provider's confirmation number
+  providerRoomId      String?  @map("provider_room_id") // Provider's room/rate ID
+
+  // Booking details
+  checkInDate     DateTime @map("check_in_date") @db.Date
+  checkOutDate    DateTime @map("check_out_date") @db.Date
+  guestCount      Int      @map("guest_count")
+  roomCount       Int      @map("room_count") @default(1)
+
+  // Guest information
+  guestName       String   @map("guest_name")
+  guestEmail      String   @map("guest_email")
+  guestPhone      String   @map("guest_phone")
+  specialRequests String?  @map("special_requests")
+
+  // Pricing
+  totalPrice      Decimal  @map("total_price") @db.Decimal(10, 2)
+  commission      Decimal? @db.Decimal(10, 2)
+
+  // Status tracking
+  status                String   // pending, confirmed, cancelled, completed
+
+  // Payment information (Stripe)
+  stripePaymentIntentId String?  @map("stripe_payment_intent_id")
+  stripePaymentStatus   String?  @map("stripe_payment_status") // succeeded, pending, failed
+
+  // Cancellation tracking
+  cancelledAt        DateTime? @map("cancelled_at")
+  cancellationReason String?   @map("cancellation_reason")
+  refundAmount       Decimal?  @map("refund_amount") @db.Decimal(10, 2)
+
+  // Metadata
+  bookingMetadata Json?    @map("booking_metadata")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @default(now()) @updatedAt @map("updated_at")
+
+  // Relations
+  user   User?   @relation(fields: [userId], references: [id])
+  hotel  Hotel?  @relation(fields: [hotelId], references: [id])
+  room   Room?   @relation(fields: [roomId], references: [id])
+  refunds Refund[]
+
+  @@index([userId])
+  @@index([hotelId])
+  @@index([status])
+  @@index([guestEmail])
+  @@index([providerName, providerBookingId])
+  @@index([stripePaymentIntentId])
+  @@map("bookings")
+}
+
+// ===================================
+// REFUNDS - Phase 3
+// ===================================
+
+model Refund {
+  id              String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  bookingId       String    @map("booking_id") @db.Uuid
+  stripeRefundId  String?   @map("stripe_refund_id")
+  amount          Decimal   @db.Decimal(10, 2)
+  reason          String?
+  status          String    @default("pending") // pending, completed, failed
+  createdAt       DateTime  @default(now()) @map("created_at")
+  completedAt     DateTime? @map("completed_at")
+
+  // Relations
+  booking Booking @relation(fields: [bookingId], references: [id])
+
+  @@index([bookingId])
+  @@index([status])
+  @@map("refunds")
+}
+
+// ===================================
+// EXPERIMENTS & FEATURE FLAGS - Phase 2+
+// ===================================
+
+model Experiment {
+  id           String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  name         String   @unique
+  description  String?
+  variants     Json // ["control", "variant_a", "variant_b"]
+  status       String // draft, active, paused, completed
+  startDate    DateTime? @map("start_date")
+  endDate      DateTime? @map("end_date")
+  targetMetric String?   @map("target_metric")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @default(now()) @updatedAt @map("updated_at")
+
+  // Relations
+  assignments ExperimentAssignment[]
+
+  @@map("experiments")
+}
+
+model ExperimentAssignment {
+  id           String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  experimentId String   @map("experiment_id") @db.Uuid
+  userId       String   @map("user_id") @db.Uuid
+  sessionId    String   @map("session_id")
+  variant      String
+  assignedAt   DateTime @default(now()) @map("assigned_at")
+
+  // Relations
+  experiment Experiment @relation(fields: [experimentId], references: [id])
+  user       User       @relation(fields: [userId], references: [id])
+
+  @@unique([experimentId, userId])
+  @@index([experimentId])
+  @@map("experiment_assignments")
+}
+
+model FeatureFlag {
+  id                String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  name              String   @unique
+  description       String?
+  enabled           Boolean  @default(false)
+  rolloutPercentage Int      @default(0) @map("rollout_percentage")
+  targetingRules    Json?    @map("targeting_rules")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @default(now()) @updatedAt @map("updated_at")
+
+  @@map("feature_flags")
+}
+
+// ===================================
+// AI OBSERVATIONS & RECOMMENDATIONS - Phase 3+
+// ===================================
+
+model AiObservation {
+  id                 String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  observationType    String   @map("observation_type")
+  metricName         String?  @map("metric_name")
+  metricValue        Decimal? @map("metric_value")
+  baselineValue      Decimal? @map("baseline_value")
+  variancePercentage Decimal? @map("variance_percentage")
+  analysisSummary    String?  @map("analysis_summary")
+  rawData            Json?    @map("raw_data")
+  createdAt          DateTime @default(now()) @map("created_at")
+
+  // Relations
+  recommendations AiRecommendation[]
+
+  @@map("ai_observations")
+}
+
+model AiRecommendation {
+  id                     String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  observationId          String?  @map("observation_id") @db.Uuid
+  recommendationType     String   @map("recommendation_type")
+  title                  String
+  description            String?
+  expectedImpact         String?  @map("expected_impact")
+  confidenceScore        Decimal? @map("confidence_score")
+  status                 String   @default("pending") // pending, approved, rejected, implemented
+  implementationDetails  Json?    @map("implementation_details")
+  createdAt              DateTime @default(now()) @map("created_at")
+  reviewedAt             DateTime? @map("reviewed_at")
+  reviewedBy             String?   @map("reviewed_by") @db.Uuid
+
+  // Relations
+  observation AiObservation? @relation(fields: [observationId], references: [id])
+
+  @@map("ai_recommendations")
+}
+
+// ===================================
+// AI SELF-LEARNING TABLES - Phase 3+
+// ===================================
+
+model AiPrediction {
+  id                String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  predictionType    String    @map("prediction_type")
+  opportunityId     String?   @map("opportunity_id") @db.Uuid
+  campaignId        String?   @map("campaign_id") @db.Uuid
+  predictedValue    Decimal?  @map("predicted_value") @db.Decimal(10, 4)
+  confidenceScore   Decimal?  @map("confidence_score") @db.Decimal(3, 2)
+  predictionFactors Json?     @map("prediction_factors")
+  modelVersion      String?   @map("model_version")
+  actualValue       Decimal?  @map("actual_value") @db.Decimal(10, 4)
+  outcomeRecordedAt DateTime? @map("outcome_recorded_at")
+  predictionError   Decimal?  @map("prediction_error") @db.Decimal(10, 4)
+  errorPercentage   Decimal?  @map("error_percentage") @db.Decimal(6, 2)
+  wasAccurate       Boolean?  @map("was_accurate")
+  createdAt         DateTime  @default(now()) @map("created_at")
+
+  // Relations
+  opportunity MarketOpportunity? @relation(fields: [opportunityId], references: [id])
+  campaign    AdCampaign?        @relation(fields: [campaignId], references: [id])
+
+  @@index([predictionType])
+  @@index([wasAccurate])
+  @@map("ai_predictions")
+}
+
+model AiLearning {
+  id                        String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  learningType              String    @map("learning_type")
+  patternDescription        String?   @map("pattern_description")
+  sampleSize                Int?      @map("sample_size")
+  confidenceLevel           Decimal?  @map("confidence_level") @db.Decimal(3, 2)
+  insightKey                String?   @map("insight_key")
+  insightValue              Json?     @map("insight_value")
+  avgPredictionImprovement  Decimal?  @map("avg_prediction_improvement") @db.Decimal(5, 2)
+  status                    String    @default("active") // active, deprecated, testing
+  createdAt                 DateTime  @default(now()) @map("created_at")
+  lastValidatedAt           DateTime? @map("last_validated_at")
+
+  @@index([learningType])
+  @@index([status])
+  @@map("ai_learnings")
+}
+
+model FeatureImportance {
+  id              String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  featureName     String   @map("feature_name")
+  predictionType  String   @map("prediction_type")
+  importanceScore Decimal? @map("importance_score") @db.Decimal(5, 4)
+  sampleSize      Int?     @map("sample_size")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  @@unique([featureName, predictionType, createdAt])
+  @@map("feature_importance")
+}
+
+model AiModelExperiment {
+  id                       String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  experimentName           String    @map("experiment_name")
+  modelVersionControl      String?   @map("model_version_control")
+  modelVersionTest         String?   @map("model_version_test")
+  trafficSplit             Decimal?  @default(0.20) @map("traffic_split") @db.Decimal(3, 2)
+  controlAvgRoas           Decimal?  @map("control_avg_roas") @db.Decimal(6, 2)
+  testAvgRoas              Decimal?  @map("test_avg_roas") @db.Decimal(6, 2)
+  controlAccuracy          Decimal?  @map("control_accuracy") @db.Decimal(5, 2)
+  testAccuracy             Decimal?  @map("test_accuracy") @db.Decimal(5, 2)
+  sampleSizeControl        Int?      @map("sample_size_control")
+  sampleSizeTest           Int?      @map("sample_size_test")
+  statisticalSignificance  Decimal?  @map("statistical_significance") @db.Decimal(5, 4)
+  status                   String    @default("running") // running, control_wins, test_wins
+  startedAt                DateTime  @default(now()) @map("started_at")
+  endedAt                  DateTime? @map("ended_at")
+
+  @@index([status])
+  @@map("ai_model_experiments")
+}
+
+// ===================================
+// MARKET OPPORTUNITIES & AD CAMPAIGNS - Phase 5+
+// ===================================
+
+model MarketOpportunity {
+  id                     String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  city                   String
+  state                  String?
+  eventName              String?   @map("event_name")
+  eventDate              DateTime? @map("event_date") @db.Date
+  eventType              String?   @map("event_type")
+  expectedAttendance     Int?      @map("expected_attendance")
+  dataSource             String?   @map("data_source")
+  opportunityScore       Decimal?  @map("opportunity_score") @db.Decimal(3, 2)
+  estimatedCpc           Decimal?  @map("estimated_cpc") @db.Decimal(5, 2)
+  estimatedConversionRate Decimal? @map("estimated_conversion_rate") @db.Decimal(5, 4)
+  estimatedRoi           Decimal?  @map("estimated_roi") @db.Decimal(6, 2)
+  recommendedDailyBudget Decimal?  @map("recommended_daily_budget") @db.Decimal(8, 2)
+  recommendedStartDate   DateTime? @map("recommended_start_date") @db.Date
+  recommendedEndDate     DateTime? @map("recommended_end_date") @db.Date
+  status                 String    @default("discovered") // discovered, approved, active, paused, completed
+  metadata               Json?
+  createdAt              DateTime  @default(now()) @map("created_at")
+  reviewedAt             DateTime? @map("reviewed_at")
+  campaignLaunchedAt     DateTime? @map("campaign_launched_at")
+
+  // Relations
+  campaigns   AdCampaign[]
+  predictions AiPrediction[]
+
+  @@index([status])
+  @@index([opportunityScore(sort: Desc)])
+  @@index([eventDate])
+  @@map("market_opportunities")
+}
+
+model AdCampaign {
+  id               String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  opportunityId    String?  @map("opportunity_id") @db.Uuid
+  campaignName     String   @map("campaign_name")
+  city             String
+  targetHotels     String[] @map("target_hotels")
+  googleCampaignId String?  @map("google_campaign_id")
+  dailyBudget      Decimal? @map("daily_budget") @db.Decimal(8, 2)
+  maxCpc           Decimal? @map("max_cpc") @db.Decimal(5, 2)
+  impressions      Int      @default(0)
+  clicks           Int      @default(0)
+  conversions      Int      @default(0)
+  costSpent        Decimal  @default(0) @map("cost_spent") @db.Decimal(10, 2)
+  revenueGenerated Decimal  @default(0) @map("revenue_generated") @db.Decimal(10, 2)
+  status           String   @default("draft") // draft, active, paused, completed
+  startDate        DateTime? @map("start_date") @db.Date
+  endDate          DateTime? @map("end_date") @db.Date
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @default(now()) @updatedAt @map("updated_at")
+
+  // Relations
+  opportunity MarketOpportunity?      @relation(fields: [opportunityId], references: [id])
+  performance AdCampaignPerformance[]
+  predictions AiPrediction[]
+
+  @@index([status])
+  @@index([opportunityId])
+  @@map("ad_campaigns")
+}
+
+model AdCampaignPerformance {
+  id             String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  campaignId     String   @map("campaign_id") @db.Uuid
+  date           DateTime @db.Date
+  impressions    Int?
+  clicks         Int?
+  conversions    Int?
+  cost           Decimal? @db.Decimal(10, 2)
+  revenue        Decimal? @db.Decimal(10, 2)
+  cpc            Decimal? @db.Decimal(5, 2)
+  ctr            Decimal? @db.Decimal(5, 4)
+  conversionRate Decimal? @map("conversion_rate") @db.Decimal(5, 4)
+  roas           Decimal? @db.Decimal(6, 2)
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  // Relations
+  campaign AdCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@unique([campaignId, date])
+  @@index([campaignId, date])
+  @@map("ad_campaign_performance")
+}
