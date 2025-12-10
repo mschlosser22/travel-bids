@@ -85,11 +85,10 @@ export function BookingForm({
     setError(null)
 
     try {
-      // For MVP, we're not processing payments yet
-      // Just create a booking record in the database
       const selectedRoom = hotelDetails?.rooms.find(r => r.roomId === roomId)
 
-      const response = await fetch('/api/bookings/create', {
+      // Step 1: Create booking in database with 'pending' status
+      const bookingResponse = await fetch('/api/bookings/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -105,22 +104,21 @@ export function BookingForm({
         }),
       })
 
-      if (!response.ok) {
+      if (!bookingResponse.ok) {
         throw new Error('Failed to create booking')
       }
 
-      const data = await response.json()
+      const bookingData = await bookingResponse.json()
 
-      // Track booking completion
-      const bookedRoom = hotelDetails?.rooms.find(r => r.roomId === roomId)
-      posthog.capture('booking_completed', {
-        booking_id: data.bookingId,
+      // Track booking initiated
+      posthog.capture('booking_initiated', {
+        booking_id: bookingData.bookingId,
         hotel_id: hotelId,
         hotel_name: hotelDetails?.name,
         provider: providerId,
         room_id: roomId,
-        room_type: bookedRoom?.roomType,
-        price: bookedRoom?.price,
+        room_type: selectedRoom?.roomType,
+        price: selectedRoom?.price,
         check_in: checkInDate,
         check_out: checkOutDate,
         nights: calculateNights(checkInDate, checkOutDate),
@@ -129,8 +127,33 @@ export function BookingForm({
         guest_email: guestDetails.email
       })
 
-      // Navigate to confirmation page
-      router.push(buildConfirmationUrl(data.bookingId))
+      // Step 2: Create Stripe Checkout Session
+      const checkoutResponse = await fetch('/api/payments/create-checkout-session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          bookingId: bookingData.bookingId,
+          hotelName: hotelDetails?.name,
+          checkInDate,
+          checkOutDate,
+          totalPrice: selectedRoom?.price || 0,
+          guestEmail: guestDetails.email,
+        }),
+      })
+
+      if (!checkoutResponse.ok) {
+        throw new Error('Failed to create payment session')
+      }
+
+      const checkoutData = await checkoutResponse.json()
+
+      // Step 3: Redirect to Stripe Checkout
+      if (checkoutData.url) {
+        window.location.href = checkoutData.url
+      } else {
+        throw new Error('No checkout URL received')
+      }
+
     } catch (err: any) {
       setError(err.message || 'Failed to complete booking')
       setSubmitting(false)
@@ -257,13 +280,13 @@ export function BookingForm({
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
                 <div className="flex items-start gap-3">
                   <svg className="w-6 h-6 text-blue-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
                   </svg>
                   <div>
-                    <h3 className="font-semibold text-blue-900 mb-1">Payment at Hotel</h3>
+                    <h3 className="font-semibold text-blue-900 mb-1">Secure Payment</h3>
                     <p className="text-sm text-blue-800">
-                      No payment required now. You'll pay directly at the hotel during check-in.
-                      This reservation is confirmed once you submit your details.
+                      You'll be redirected to our secure payment processor (Stripe) to complete your booking.
+                      Your payment information is encrypted and secure.
                     </p>
                   </div>
                 </div>
@@ -282,7 +305,7 @@ export function BookingForm({
                 disabled={submitting}
                 className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-semibold py-4 px-6 rounded-lg transition-colors text-lg"
               >
-                {submitting ? 'Processing...' : 'Confirm Booking'}
+                {submitting ? 'Redirecting to payment...' : 'Continue to Payment'}
               </button>
             </form>
           </div>
