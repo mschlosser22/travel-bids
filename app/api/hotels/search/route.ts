@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { providerManager } from '@/lib/hotel-providers'
+import { getProviderManager } from '@/lib/hotel-providers'
 import type { SearchParams } from '@/lib/hotel-providers/types'
 
 export async function POST(request: NextRequest) {
@@ -47,7 +47,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Search hotels using provider manager
-    const hotels = await providerManager.search(searchParams)
+    const hotels = await getProviderManager().search(searchParams)
 
     return NextResponse.json({
       success: true,

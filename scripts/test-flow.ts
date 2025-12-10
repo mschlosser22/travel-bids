@@ -3,7 +3,9 @@ import { config } from 'dotenv'
 config({ path: '.env.local' })
 
 import { buildSearchUrl, buildHotelUrl, parseSearchUrl, parseHotelUrl } from '../lib/url-helpers'
-import { providerManager } from '../lib/hotel-providers'
+import { getProviderManager } from '../lib/hotel-providers'
+
+const providerManager = getProviderManager()
 
 async function testCompleteFlow() {
   console.log('🧪 Testing Complete Hotel Search Flow with LLM-Friendly URLs\n')

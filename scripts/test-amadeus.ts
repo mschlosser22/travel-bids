@@ -2,7 +2,9 @@
 import { config } from 'dotenv'
 config({ path: '.env.local' })
 
-import { providerManager } from '../lib/hotel-providers'
+import { getProviderManager } from '../lib/hotel-providers'
+
+const providerManager = getProviderManager()
 
 async function testAmadeusIntegration() {
   console.log('🏨 Testing Amadeus Hotel Provider Integration\n')

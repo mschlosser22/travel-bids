@@ -228,6 +228,3 @@ export function getProviderManager(): HotelProviderManager {
   }
   return providerManagerInstance
 }
-
-// Export for convenience
-export const providerManager = getProviderManager()

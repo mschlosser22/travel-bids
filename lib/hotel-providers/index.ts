@@ -4,4 +4,3 @@
 export * from './types'
 export * from './amadeus'
 export * from './provider-manager'
-export { providerManager, getProviderManager } from './provider-manager'
