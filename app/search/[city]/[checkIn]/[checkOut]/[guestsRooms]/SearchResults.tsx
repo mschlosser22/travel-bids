@@ -248,7 +248,7 @@ export function SearchResults({ searchParams }: SearchResultsProps) {
                     View Details
                   </a>
 
-                  {hotel.roomsAvailable > 0 && (
+                  {hotel.roomsAvailable != null && hotel.roomsAvailable > 0 && (
                     <p className="text-xs text-center text-gray-600 mt-2">
                       {hotel.roomsAvailable} {hotel.roomsAvailable === 1 ? 'room' : 'rooms'} available
                     </p>
