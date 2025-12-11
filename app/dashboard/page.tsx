@@ -7,6 +7,7 @@ interface Booking {
   id: string
   provider_name: string
   provider_hotel_id: string
+  hotel_name: string | null
   check_in_date: string
   check_out_date: string
   total_price: number
