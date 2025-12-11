@@ -18,11 +18,17 @@ interface BookingConfirmationData {
 
 /**
  * Send booking confirmation email to guest
+ *
+ * NOTE: In Resend sandbox mode, emails only go to verified email addresses (ms122r4@gmail.com).
+ * To send to actual guest emails in production:
+ * 1. Verify a domain at https://resend.com/domains
+ * 2. Update the 'from' address below to use your verified domain
+ * 3. Example: 'Travel Bids <noreply@travelbids.com>'
  */
 export async function sendBookingConfirmation(booking: BookingConfirmationData) {
   try {
     const { data, error } = await resend.emails.send({
-      from: 'Travel Bids <noreply@resend.dev>', // TODO: Change to verified domain
+      from: 'Travel Bids <noreply@resend.dev>', // TODO: Change to verified domain (e.g., noreply@travelbids.com)
       to: booking.guestEmail,
       subject: `Booking Confirmed - ${booking.hotelName}`,
       html: generateBookingConfirmationHTML(booking),
