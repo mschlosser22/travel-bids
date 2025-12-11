@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import Stripe from 'stripe'
 import { supabase } from '@/lib/supabase-server'
+import { sendBookingConfirmation } from '@/lib/email'
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2025-11-17.clover',
@@ -39,7 +40,7 @@ export async function POST(request: NextRequest) {
         }
 
         // Update booking status in database
-        const { error: updateError } = await supabase
+        const { data: booking, error: updateError } = await supabase
           .from('bookings')
           .update({
             status: 'confirmed',
@@ -48,6 +49,8 @@ export async function POST(request: NextRequest) {
             updated_at: new Date().toISOString(),
           })
           .eq('id', bookingId)
+          .select()
+          .single()
 
         if (updateError) {
           console.error('Failed to update booking:', updateError)
@@ -58,6 +61,22 @@ export async function POST(request: NextRequest) {
         }
 
         console.log(`✅ Booking ${bookingId} confirmed - Payment succeeded`)
+
+        // Send confirmation email
+        if (booking) {
+          await sendBookingConfirmation({
+            bookingId: booking.id,
+            guestName: booking.guest_name,
+            guestEmail: booking.guest_email,
+            hotelName: booking.provider_hotel_id, // Will be improved when we store hotel name
+            checkInDate: booking.check_in_date,
+            checkOutDate: booking.check_out_date,
+            guestCount: booking.guest_count,
+            roomCount: booking.room_count,
+            totalPrice: Number(booking.total_price),
+            specialRequests: booking.special_requests,
+          })
+        }
         break
       }
 
