@@ -54,25 +54,56 @@ export default async function BookingDetailsPage({ params }: BookingDetailsProps
 
   // Show limited info if not authenticated
   if (!hasAccess) {
+    const checkIn = new Date(booking.check_in_date)
+    const checkOut = new Date(booking.check_out_date)
+
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
         <div className="max-w-md w-full bg-white rounded-lg shadow-md p-8 text-center">
-          <h1 className="text-2xl font-bold text-gray-900 mb-4">Booking Confirmed</h1>
-          <p className="text-gray-600 mb-6">
-            Your booking has been confirmed. Check your email for details.
-          </p>
           <div className="mb-6">
-            <p className="text-sm text-gray-600 mb-2">Booking ID</p>
+            <div className="inline-block bg-green-100 rounded-full p-3 mb-4">
+              <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            <h1 className="text-2xl font-bold text-gray-900 mb-2">Booking Confirmed!</h1>
+            <p className="text-gray-600">
+              Your reservation has been confirmed. Check your email for full details.
+            </p>
+          </div>
+
+          <div className="bg-gray-50 rounded-lg p-4 mb-6">
+            <p className="text-sm text-gray-600 mb-2">Booking Reference</p>
             <p className="text-lg font-mono font-semibold text-gray-900">
               {booking.id.slice(0, 13)}
             </p>
           </div>
+
+          <div className="text-left mb-6 space-y-3">
+            <div className="flex justify-between py-2 border-b border-gray-200">
+              <span className="text-sm text-gray-600">Hotel</span>
+              <span className="text-sm font-medium text-gray-900">{booking.hotel_name || 'Confirmed'}</span>
+            </div>
+            <div className="flex justify-between py-2 border-b border-gray-200">
+              <span className="text-sm text-gray-600">Check-in</span>
+              <span className="text-sm font-medium text-gray-900">
+                {checkIn.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+              </span>
+            </div>
+            <div className="flex justify-between py-2 border-b border-gray-200">
+              <span className="text-sm text-gray-600">Check-out</span>
+              <span className="text-sm font-medium text-gray-900">
+                {checkOut.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+              </span>
+            </div>
+          </div>
+
           <div className="border-t border-gray-200 pt-6">
             <p className="text-sm text-gray-600 mb-4">
-              Want to view, modify, or cancel this booking?
+              Sign in to view full details, modify, or cancel your booking.
             </p>
             <Link
-              href="/login"
+              href={`/login?next=/booking/${booking.id}`}
               className="inline-block bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors"
             >
               Sign in to your account

@@ -1,13 +1,16 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase-browser'
 import Link from 'next/link'
+import { useSearchParams } from 'next/navigation'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+  const searchParams = useSearchParams()
+  const next = searchParams.get('next') || '/dashboard'
   const supabase = createClient()
 
   const handleMagicLink = async (e: React.FormEvent) => {
@@ -16,10 +19,12 @@ export default function LoginPage() {
     setMessage(null)
 
     try {
+      const redirectUrl = `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`
+
       const { error } = await supabase.auth.signInWithOtp({
         email,
         options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
+          emailRedirectTo: redirectUrl,
         },
       })
 
