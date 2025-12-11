@@ -5,11 +5,11 @@ import { redirect } from 'next/navigation'
 
 interface Booking {
   id: string
-  confirmation_number: string
-  hotel_name: string
+  provider_name: string
+  provider_hotel_id: string
   check_in_date: string
   check_out_date: string
-  total_amount: number
+  total_price: number
   status: string
   cancelled_at: string | null
   cancellation_reason: string | null
@@ -167,6 +167,9 @@ function BookingCard({ booking }: { booking: Booking }) {
     cancelled: 'bg-red-100 text-red-800',
   }
 
+  // Use hotel_name if available, otherwise fall back to provider_hotel_id
+  const displayName = booking.hotel_name || booking.provider_hotel_id || 'Hotel Booking'
+
   return (
     <Link
       href={`/booking/${booking.id}`}
@@ -174,8 +177,8 @@ function BookingCard({ booking }: { booking: Booking }) {
     >
       <div className="flex justify-between items-start mb-4">
         <div>
-          <h3 className="text-lg font-semibold text-gray-900">{booking.hotel_name}</h3>
-          <p className="text-sm text-gray-600">Confirmation: {booking.confirmation_number}</p>
+          <h3 className="text-lg font-semibold text-gray-900">{displayName}</h3>
+          <p className="text-sm text-gray-600">Booking ID: {booking.id.slice(0, 8)}</p>
         </div>
         <span
           className={`px-3 py-1 rounded-full text-xs font-semibold ${
@@ -213,7 +216,7 @@ function BookingCard({ booking }: { booking: Booking }) {
         </div>
         <div>
           <p className="text-gray-600">Total Amount</p>
-          <p className="font-medium text-gray-900">${booking.total_amount.toFixed(2)}</p>
+          <p className="font-medium text-gray-900">${Number(booking.total_price).toFixed(2)}</p>
         </div>
       </div>
 

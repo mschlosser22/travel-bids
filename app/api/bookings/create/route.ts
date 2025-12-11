@@ -19,6 +19,7 @@ export async function POST(request: NextRequest) {
 
     const {
       hotelId,
+      hotelName,
       roomId,
       providerId,
       checkInDate,
@@ -60,6 +61,7 @@ export async function POST(request: NextRequest) {
         provider_name: providerId,
         provider_hotel_id: hotelId,
         provider_room_id: roomId,
+        hotel_name: hotelName || null, // Cache hotel name for display
         check_in_date: checkInDate,
         check_out_date: checkOutDate,
         guest_count: adults || 2,

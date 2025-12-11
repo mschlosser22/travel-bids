@@ -174,11 +174,14 @@ export function BookingForm({
       console.log('[BookingForm] Room to book:', roomToBook.roomType, 'Price:', roomToBook.price)
 
       // Step 1: Create booking in database with 'pending' status
+      const hotelName = usedCache && cachedOffer ? cachedOffer.hotelName : hotelDetails?.name
+
       const bookingResponse = await fetch('/api/bookings/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           hotelId,
+          hotelName, // Send hotel name for caching in database
           roomId: roomToBook.roomId, // Use roomId from cached offer or fresh API
           providerId,
           checkInDate,
@@ -197,8 +200,6 @@ export function BookingForm({
       const bookingData = await bookingResponse.json()
 
       // Track booking initiated
-      const hotelName = usedCache && cachedOffer ? cachedOffer.hotelName : hotelDetails?.name
-
       posthog.capture('booking_initiated', {
         booking_id: bookingData.bookingId,
         hotel_id: hotelId,

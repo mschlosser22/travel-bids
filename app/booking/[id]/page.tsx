@@ -1,8 +1,20 @@
 import { getCurrentUser } from '@/lib/auth-helpers'
-import { createClient } from '@/lib/supabase-server'
+import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 import { getCancellationPolicy, calculateRefundAmount } from '@/lib/cancellation-policy'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
+
+// Service role client for unrestricted access (bypasses RLS)
+const supabaseAdmin = createSupabaseClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false
+    }
+  }
+)
 
 interface BookingDetailsProps {
   params: Promise<{
@@ -11,11 +23,12 @@ interface BookingDetailsProps {
 }
 
 async function getBooking(id: string, userId?: string, email?: string) {
-  const supabase = await createClient()
-
-  let query = supabase.from('bookings').select('*').eq('id', id).single()
-
-  const { data, error } = await query
+  // Use service role to bypass RLS and fetch booking
+  const { data, error } = await supabaseAdmin
+    .from('bookings')
+    .select('*')
+    .eq('id', id)
+    .single()
 
   if (error || !data) {
     return null
@@ -49,9 +62,9 @@ export default async function BookingDetailsPage({ params }: BookingDetailsProps
             Your booking has been confirmed. Check your email for details.
           </p>
           <div className="mb-6">
-            <p className="text-sm text-gray-600 mb-2">Confirmation Number</p>
+            <p className="text-sm text-gray-600 mb-2">Booking ID</p>
             <p className="text-lg font-mono font-semibold text-gray-900">
-              {booking.confirmation_number}
+              {booking.id.slice(0, 13)}
             </p>
           </div>
           <div className="border-t border-gray-200 pt-6">
@@ -77,7 +90,7 @@ export default async function BookingDetailsPage({ params }: BookingDetailsProps
   )
   const refundInfo = calculateRefundAmount(
     policy,
-    booking.total_amount,
+    Number(booking.total_price),
     new Date(booking.check_in_date),
     new Date()
   )
@@ -123,8 +136,8 @@ export default async function BookingDetailsPage({ params }: BookingDetailsProps
         {/* Booking Details */}
         <div className="bg-white rounded-lg shadow-md overflow-hidden mb-6">
           <div className="bg-blue-600 text-white px-6 py-4">
-            <h1 className="text-2xl font-bold">{booking.hotel_name}</h1>
-            <p className="text-blue-100 mt-1">Confirmation: {booking.confirmation_number}</p>
+            <h1 className="text-2xl font-bold">{booking.hotel_name || booking.provider_hotel_id || 'Hotel Booking'}</h1>
+            <p className="text-blue-100 mt-1">Booking ID: {booking.id.slice(0, 8)}</p>
           </div>
 
           <div className="p-6 space-y-6">
@@ -180,7 +193,7 @@ export default async function BookingDetailsPage({ params }: BookingDetailsProps
                 </div>
                 <div>
                   <p className="text-sm text-gray-600">Number of Guests</p>
-                  <p className="font-medium text-gray-900">{booking.num_guests} guest{booking.num_guests !== 1 ? 's' : ''}</p>
+                  <p className="font-medium text-gray-900">{booking.guest_count} guest{booking.guest_count !== 1 ? 's' : ''}</p>
                 </div>
               </div>
             </div>
@@ -191,11 +204,11 @@ export default async function BookingDetailsPage({ params }: BookingDetailsProps
               <div className="space-y-2">
                 <div className="flex justify-between">
                   <span className="text-gray-600">Room Rate ({nights} night{nights !== 1 ? 's' : ''})</span>
-                  <span className="font-medium text-gray-900">${booking.total_amount.toFixed(2)}</span>
+                  <span className="font-medium text-gray-900">${Number(booking.total_price).toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between text-lg font-bold pt-2 border-t">
                   <span>Total Paid</span>
-                  <span>${booking.total_amount.toFixed(2)}</span>
+                  <span>${Number(booking.total_price).toFixed(2)}</span>
                 </div>
                 <p className="text-sm text-gray-600">Payment ID: {booking.stripe_payment_intent_id}</p>
               </div>
