@@ -120,7 +120,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
       )
     }
 
-    // TODO: Send cancellation confirmation email
+    // TODO: Send cancellation confirmation email (requires cancellation email template)
 
     return NextResponse.redirect(
       new URL(`/booking/${id}?cancelled=true`, request.url)

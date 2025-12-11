@@ -80,7 +80,7 @@ export async function POST(request: NextRequest) {
             bookingId: booking.id,
             guestName: booking.guest_name,
             guestEmail: booking.guest_email,
-            hotelName: booking.provider_hotel_id, // Will be improved when we store hotel name
+            hotelName: booking.hotel_name || booking.provider_hotel_id || 'Your Hotel',
             checkInDate: booking.check_in_date,
             checkOutDate: booking.check_out_date,
             guestCount: booking.guest_count,
