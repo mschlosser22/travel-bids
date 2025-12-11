@@ -17,7 +17,7 @@ export default async function BookingConfirmationPage({
   let error = null
 
   try {
-    const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3001'}/api/bookings/${bookingId}`, {
+    const response = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/bookings/${bookingId}`, {
       cache: 'no-store', // Always fetch fresh data
     })
 

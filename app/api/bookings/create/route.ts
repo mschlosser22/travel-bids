@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
       adults,
       rooms,
       guestDetails,
-      totalPrice,
+      totalPrice, // Note: This is just for initial record, actual price validated at payment time
     } = body
 
     // Validate required fields
@@ -33,12 +33,13 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // For MVP: Create booking in database with status 'pending'
-    // In production with Stripe:
-    // 1. Create booking with status 'pending'
-    // 2. Process payment via Stripe
-    // 3. Call provider's booking API (Amadeus)
-    // 4. Update status to 'confirmed' after provider confirms
+    // Create booking in database with status 'pending'
+    // Price stored here is just for reference - actual charge validated server-side at payment time
+    // Flow:
+    // 1. Create booking with status 'pending' (this step)
+    // 2. Payment API validates fresh price with provider
+    // 3. Stripe checkout created with validated price
+    // 4. Webhook updates status to 'confirmed' after payment
     // 5. Send confirmation email
 
     const { data: booking, error: dbError } = await supabase
@@ -55,12 +56,13 @@ export async function POST(request: NextRequest) {
         guest_email: guestDetails.email,
         guest_phone: guestDetails.phone,
         special_requests: guestDetails.specialRequests || null,
-        total_price: totalPrice || 0,
+        total_price: totalPrice || 0, // Placeholder - actual price validated at payment
         status: 'pending', // Will be 'confirmed' after payment
         booking_metadata: {
           roomId,
           hotelId,
           providerId,
+          note: 'Price will be validated server-side before payment',
         },
       })
       .select()

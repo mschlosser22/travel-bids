@@ -217,25 +217,52 @@ export function BookingForm({
         cache_key: offerKey
       })
 
-      // Step 2: Create Stripe Checkout Session
+      // Step 2: Create Stripe Checkout Session with server-side price validation
       const checkoutResponse = await fetch('/api/payments/create-checkout-session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           bookingId: bookingData.bookingId,
-          hotelName,
+          providerId,
+          providerHotelId: hotelId,
+          providerRoomId: roomToBook.roomId,
           checkInDate,
           checkOutDate,
-          totalPrice: roomToBook.price, // Use price from cached offer or fresh API (server-authoritative)
+          adults,
+          rooms,
           guestEmail: guestDetails.email,
+          offerKey, // Send cache key for price comparison
         }),
       })
 
       if (!checkoutResponse.ok) {
-        throw new Error('Failed to create payment session')
+        const errorData = await checkoutResponse.json()
+
+        // Handle price change error specifically
+        if (errorData.code === 'PRICE_CHANGED') {
+          setError(
+            `Price Updated: The room price has changed from $${errorData.cachedPrice.toFixed(2)} to $${errorData.currentPrice.toFixed(2)}. Please refresh and try again.`
+          )
+          setSubmitting(false)
+          return
+        }
+
+        if (errorData.code === 'ROOM_UNAVAILABLE') {
+          setError('Sorry, this room is no longer available. Please select another room.')
+          setSubmitting(false)
+          return
+        }
+
+        throw new Error(errorData.message || 'Failed to create payment session')
       }
 
       const checkoutData = await checkoutResponse.json()
+
+      console.log('[BookingForm] Price validation:', {
+        validated: checkoutData.validatedPrice,
+        matched: checkoutData.priceMatched,
+        cached: roomToBook.price
+      })
 
       // Step 3: Redirect to Stripe Checkout
       if (checkoutData.url) {
