@@ -221,12 +221,31 @@ function generateBookingConfirmationHTML(booking: BookingConfirmationData): stri
             </td>
           </tr>
 
-          <!-- CTA Button -->
+          <!-- Create Account CTA -->
+          <tr>
+            <td style="padding: 0 32px 24px;">
+              <div style="background-color: #eff6ff; border: 2px solid #2563eb; border-radius: 8px; padding: 20px; text-align: center;">
+                <h3 style="margin: 0 0 8px; color: #1e40af; font-size: 18px; font-weight: 600;">Create Your Account</h3>
+                <p style="margin: 0 0 16px; color: #1e3a8a; font-size: 14px; line-height: 1.5;">
+                  Get instant access to view, modify, or cancel your bookings anytime!
+                </p>
+                <a href="${process.env.NEXT_PUBLIC_APP_URL}/login"
+                   style="display: inline-block; background-color: #2563eb; color: #ffffff; text-decoration: none; padding: 12px 28px; border-radius: 6px; font-size: 15px; font-weight: 600; margin-bottom: 12px;">
+                  Sign In / Create Account
+                </a>
+                <p style="margin: 0; color: #3b82f6; font-size: 12px;">
+                  No password needed - we'll send you a magic link!
+                </p>
+              </div>
+            </td>
+          </tr>
+
+          <!-- View Booking Button -->
           <tr>
             <td style="padding: 0 32px 32px; text-align: center;">
               <a href="${process.env.NEXT_PUBLIC_APP_URL}/booking/${booking.bookingId}"
-                 style="display: inline-block; background-color: #2563eb; color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 6px; font-size: 16px; font-weight: 600;">
-                View Booking Details
+                 style="display: inline-block; background-color: #6b7280; color: #ffffff; text-decoration: none; padding: 12px 28px; border-radius: 6px; font-size: 14px; font-weight: 600;">
+                View Booking Confirmation
               </a>
             </td>
           </tr>
