@@ -106,21 +106,21 @@ export default async function BookingConfirmationPage({
           {/* Success Icon */}
           <div className="text-center mb-8">
             <div className={`inline-flex items-center justify-center w-20 h-20 rounded-full mb-4 ${
-              booking.status === 'confirmed' ? 'bg-green-100' : 'bg-yellow-100'
+              booking.status === 'confirmed' || payment === 'success' ? 'bg-green-100' : 'bg-yellow-100'
             }`}>
               <svg className={`w-12 h-12 ${
-                booking.status === 'confirmed' ? 'text-green-600' : 'text-yellow-600'
+                booking.status === 'confirmed' || payment === 'success' ? 'text-green-600' : 'text-yellow-600'
               }`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={
-                  booking.status === 'confirmed' ? 'M5 13l4 4L19 7' : 'M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z'
+                  booking.status === 'confirmed' || payment === 'success' ? 'M5 13l4 4L19 7' : 'M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z'
                 } />
               </svg>
             </div>
             <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-2">
-              {booking.status === 'confirmed' ? 'Booking Confirmed!' : 'Booking Pending'}
+              {booking.status === 'confirmed' || payment === 'success' ? 'Booking Confirmed!' : 'Booking Pending'}
             </h1>
             <p className="text-xl text-gray-600">
-              {booking.status === 'confirmed'
+              {booking.status === 'confirmed' || payment === 'success'
                 ? 'Your reservation has been successfully confirmed'
                 : 'Complete payment to confirm your reservation'
               }
