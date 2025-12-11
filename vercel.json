@@ -1,0 +1,11 @@
+{
+  "deploymentProtection": {
+    "bypassAutomationSecret": {
+      "paths": [
+        {
+          "value": "/api/webhooks/stripe"
+        }
+      ]
+    }
+  }
+}
