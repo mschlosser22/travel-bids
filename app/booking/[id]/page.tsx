@@ -35,7 +35,7 @@ async function getBooking(id: string, userId?: string, email?: string) {
   }
 
   // Check if user has access to this booking
-  const hasAccess = !userId || data.user_id === userId || data.guest_email === email
+  const hasAccess = userId && (data.user_id === userId || data.guest_email === email)
 
   return { booking: data, hasAccess }
 }
