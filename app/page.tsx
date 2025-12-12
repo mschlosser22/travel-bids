@@ -88,7 +88,7 @@ export default function Home() {
       <footer className="border-t border-gray-200 mt-20">
         <div className="container mx-auto px-4 py-8">
           <div className="text-center text-gray-600 text-sm">
-            <p>&copy; {new Date().getFullYear()} Travel Bids. All rights reserved.</p>
+            <p>&copy; {new Date().getFullYear()} Hotel Reservation Portal. All rights reserved.</p>
             <div className="mt-2 flex justify-center gap-6">
               <a href="/privacy" className="hover:text-gray-900">Privacy Policy</a>
               <a href="/terms" className="hover:text-gray-900">Terms of Service</a>

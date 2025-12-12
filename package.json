@@ -1,5 +1,5 @@
 {
-  "name": "temp-next",
+  "name": "hotel-reservation-portal",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -12,6 +12,7 @@
     "test:flow": "dotenv -e .env.local -- tsx scripts/test-flow.ts"
   },
   "dependencies": {
+    "@next/third-parties": "^16.0.10",
     "@prisma/adapter-pg": "^7.1.0",
     "@prisma/client": "^6.19.1",
     "@supabase/ssr": "^0.8.0",
@@ -32,6 +33,7 @@
     "uuid": "^13.0.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.57.0",
     "@tailwindcss/postcss": "^4",
     "@types/js-cookie": "^3.0.6",
     "@types/node": "^20",
