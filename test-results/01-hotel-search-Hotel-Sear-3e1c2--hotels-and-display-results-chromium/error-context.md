@@ -1,0 +1,97 @@
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - navigation [ref=e2]:
+    - generic [ref=e4]:
+      - link "Travel Bids" [ref=e5] [cursor=pointer]:
+        - /url: /
+      - link "Sign In" [ref=e7] [cursor=pointer]:
+        - /url: /login
+  - generic [ref=e8]:
+    - main [ref=e9]:
+      - generic [ref=e10]:
+        - heading "Find Your Perfect Hotel" [level=1] [ref=e11]
+        - paragraph [ref=e12]: Search thousands of hotels worldwide. Best prices guaranteed.
+      - generic [ref=e14]:
+        - generic [ref=e15]:
+          - generic [ref=e16]:
+            - generic [ref=e17]: Destination
+            - combobox "Destination" [ref=e18]:
+              - option "Select a city" [selected]
+              - option "New York"
+              - option "London"
+              - option "Paris"
+              - option "Los Angeles"
+              - option "Miami"
+              - option "Las Vegas"
+              - option "Chicago"
+              - option "San Francisco"
+          - generic [ref=e19]:
+            - generic [ref=e20]: Check-in
+            - textbox "Check-in" [ref=e21]
+          - generic [ref=e22]:
+            - generic [ref=e23]: Check-out
+            - textbox "Check-out" [ref=e24]
+          - generic [ref=e25]:
+            - generic [ref=e26]: Guests
+            - combobox "Guests" [ref=e27]:
+              - option "1 Guest"
+              - option "2 Guests" [selected]
+              - option "3 Guests"
+              - option "4 Guests"
+              - option "5 Guests"
+              - option "6 Guests"
+        - button "Search Hotels" [ref=e29]
+        - generic [ref=e31]:
+          - generic [ref=e32]:
+            - img [ref=e33]
+            - generic [ref=e35]: Free Cancellation
+          - generic [ref=e36]:
+            - img [ref=e37]
+            - generic [ref=e39]: Best Price Guarantee
+          - generic [ref=e40]:
+            - img [ref=e41]
+            - generic [ref=e43]: Instant Confirmation
+      - generic [ref=e44]:
+        - generic [ref=e45]:
+          - img [ref=e47]
+          - heading "Best Price Guarantee" [level=3] [ref=e49]
+          - paragraph [ref=e50]: Find a lower price? We'll match it and give you 10% off
+        - generic [ref=e51]:
+          - img [ref=e53]
+          - heading "Instant Confirmation" [level=3] [ref=e55]
+          - paragraph [ref=e56]: Get your booking confirmed immediately via email
+        - generic [ref=e57]:
+          - img [ref=e59]
+          - heading "Secure Booking" [level=3] [ref=e61]
+          - paragraph [ref=e62]: Your payment information is encrypted and secure
+      - generic [ref=e63]:
+        - paragraph [ref=e64]: Trusted by travelers worldwide
+        - generic [ref=e65]:
+          - generic [ref=e66]:
+            - img [ref=e67]
+            - img [ref=e69]
+            - img [ref=e71]
+            - img [ref=e73]
+            - img [ref=e75]
+          - generic [ref=e77]: 4.8/5
+          - generic [ref=e78]: (12,000+ reviews)
+    - contentinfo [ref=e79]:
+      - generic [ref=e81]:
+        - paragraph [ref=e82]: © 2025 Travel Bids. All rights reserved.
+        - generic [ref=e83]:
+          - link "Privacy Policy" [ref=e84] [cursor=pointer]:
+            - /url: /privacy
+          - link "Terms of Service" [ref=e85] [cursor=pointer]:
+            - /url: /terms
+          - link "Contact Us" [ref=e86] [cursor=pointer]:
+            - /url: /contact
+  - generic [ref=e87]:
+    - img [ref=e89]
+    - button "Open Tanstack query devtools" [ref=e137] [cursor=pointer]:
+      - img [ref=e138]
+  - button "Open Next.js Dev Tools" [ref=e191] [cursor=pointer]:
+    - img [ref=e192]
+  - alert [ref=e195]
+```

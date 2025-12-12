@@ -1,0 +1,46 @@
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - navigation [ref=e2]:
+    - generic [ref=e4]:
+      - link "Travel Bids" [ref=e5] [cursor=pointer]:
+        - /url: /
+      - link "Sign In" [ref=e7] [cursor=pointer]:
+        - /url: /login
+  - generic [ref=e9]:
+    - generic [ref=e10]:
+      - link "Travel Bids" [ref=e11] [cursor=pointer]:
+        - /url: /
+      - heading "Sign in to your account" [level=1] [ref=e12]
+      - paragraph [ref=e13]: We'll send you a magic link to sign in without a password
+    - generic [ref=e14]:
+      - generic [ref=e15]:
+        - generic [ref=e16]:
+          - generic [ref=e17]: Email address
+          - textbox "Email address" [ref=e18]:
+            - /placeholder: you@example.com
+        - button "Send magic link" [ref=e19]
+      - paragraph [ref=e21]: Don't have an account? Just enter your email - we'll create one for you!
+    - link "← Back to home" [ref=e23] [cursor=pointer]:
+      - /url: /
+    - generic [ref=e24]:
+      - heading "With an account you can:" [level=3] [ref=e25]
+      - list [ref=e26]:
+        - listitem [ref=e27]:
+          - img [ref=e28]
+          - text: View all your bookings in one place
+        - listitem [ref=e30]:
+          - img [ref=e31]
+          - text: Request cancellations and modifications
+        - listitem [ref=e33]:
+          - img [ref=e34]
+          - text: Track booking history and receipts
+  - generic [ref=e36]:
+    - img [ref=e38]
+    - button "Open Tanstack query devtools" [ref=e86] [cursor=pointer]:
+      - img [ref=e87]
+  - button "Open Next.js Dev Tools" [ref=e140] [cursor=pointer]:
+    - img [ref=e141]
+  - alert [ref=e144]
+```

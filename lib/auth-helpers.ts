@@ -36,6 +36,23 @@ export async function requireAuth() {
 }
 
 /**
+ * Require authentication for API routes
+ * Throws an error with status code instead of redirecting
+ * Use in API Route Handlers (not Server Components)
+ */
+export async function requireAuthAPI() {
+  const user = await getCurrentUser()
+
+  if (!user) {
+    const error = new Error('Unauthorized') as Error & { statusCode: number }
+    error.statusCode = 401
+    throw error
+  }
+
+  return user
+}
+
+/**
  * Check if user is authenticated (boolean)
  */
 export async function isAuthenticated(): Promise<boolean> {

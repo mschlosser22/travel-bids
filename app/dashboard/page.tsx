@@ -1,7 +1,6 @@
 import { requireAuth } from '@/lib/auth-helpers'
 import { createClient } from '@/lib/supabase-server'
 import Link from 'next/link'
-import { redirect } from 'next/navigation'
 
 interface Booking {
   id: string
@@ -14,6 +13,7 @@ interface Booking {
   status: string
   cancelled_at: string | null
   cancellation_reason: string | null
+  refund_amount: number | null
   guest_name: string
   guest_email: string
   created_at: string
@@ -40,13 +40,6 @@ export default async function DashboardPage() {
   const user = await requireAuth()
   const bookings = await getBookings(user.id, user.email!)
 
-  const handleSignOut = async () => {
-    'use server'
-    const supabase = await createClient()
-    await supabase.auth.signOut()
-    redirect('/login')
-  }
-
   // Group bookings by status
   const upcomingBookings = bookings.filter(b =>
     b.status === 'confirmed' && !b.cancelled_at && new Date(b.check_in_date) > new Date()
@@ -55,30 +48,11 @@ export default async function DashboardPage() {
     b.status === 'confirmed' && !b.cancelled_at && new Date(b.check_in_date) <= new Date()
   )
   const cancelledBookings = bookings.filter(b => b.cancelled_at || b.status === 'cancelled')
+  const pendingCancellationBookings = bookings.filter(b => b.status === 'pending_cancellation')
   const pendingBookings = bookings.filter(b => b.status === 'pending')
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
-          <Link href="/" className="text-2xl font-bold text-blue-600">
-            Travel Bids
-          </Link>
-          <div className="flex items-center gap-4">
-            <span className="text-sm text-gray-600">{user.email}</span>
-            <form action={handleSignOut}>
-              <button
-                type="submit"
-                className="text-sm text-gray-600 hover:text-gray-900 font-medium"
-              >
-                Sign out
-              </button>
-            </form>
-          </div>
-        </div>
-      </header>
-
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <h1 className="text-3xl font-bold text-gray-900 mb-8">My Bookings</h1>
@@ -103,6 +77,20 @@ export default async function DashboardPage() {
                 </h2>
                 <div className="grid gap-4">
                   {upcomingBookings.map((booking) => (
+                    <BookingCard key={booking.id} booking={booking} />
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {/* Pending Cancellation Bookings */}
+            {pendingCancellationBookings.length > 0 && (
+              <section>
+                <h2 className="text-xl font-semibold text-gray-900 mb-4">
+                  Pending Cancellation ({pendingCancellationBookings.length})
+                </h2>
+                <div className="grid gap-4">
+                  {pendingCancellationBookings.map((booking) => (
                     <BookingCard key={booking.id} booking={booking} />
                   ))}
                 </div>
@@ -166,6 +154,14 @@ function BookingCard({ booking }: { booking: Booking }) {
     confirmed: 'bg-green-100 text-green-800',
     pending: 'bg-yellow-100 text-yellow-800',
     cancelled: 'bg-red-100 text-red-800',
+    pending_cancellation: 'bg-orange-100 text-orange-800',
+  }
+
+  const statusLabels: Record<string, string> = {
+    confirmed: 'Confirmed',
+    pending: 'Pending',
+    cancelled: 'Cancelled',
+    pending_cancellation: 'Pending Cancellation',
   }
 
   // Use hotel_name if available, otherwise fall back to provider_hotel_id
@@ -186,7 +182,7 @@ function BookingCard({ booking }: { booking: Booking }) {
             statusColors[booking.status as keyof typeof statusColors] || 'bg-gray-100 text-gray-800'
           }`}
         >
-          {booking.cancelled_at ? 'Cancelled' : booking.status}
+          {booking.cancelled_at ? 'Cancelled' : (statusLabels[booking.status] || booking.status)}
         </span>
       </div>
 
@@ -221,13 +217,36 @@ function BookingCard({ booking }: { booking: Booking }) {
         </div>
       </div>
 
+      {booking.status === 'pending_cancellation' && (
+        <div className="mt-4 pt-4 border-t border-gray-200">
+          <p className="text-sm text-orange-600 font-semibold">
+            Cancellation request pending
+          </p>
+          <p className="text-sm text-gray-600 mt-1">
+            We're confirming with the hotel. You'll receive an email within 24 hours.
+          </p>
+          {booking.cancellation_reason && (
+            <p className="text-sm text-gray-600 mt-1">
+              {booking.cancellation_reason}
+            </p>
+          )}
+        </div>
+      )}
+
       {booking.cancelled_at && (
         <div className="mt-4 pt-4 border-t border-gray-200">
           <p className="text-sm text-red-600">
             Cancelled on {new Date(booking.cancelled_at).toLocaleDateString()}
           </p>
+          {booking.refund_amount && Number(booking.refund_amount) > 0 && (
+            <p className="text-sm text-green-600 mt-1">
+              Refund: ${Number(booking.refund_amount).toFixed(2)}
+            </p>
+          )}
           {booking.cancellation_reason && (
-            <p className="text-sm text-gray-600 mt-1">Reason: {booking.cancellation_reason}</p>
+            <p className="text-sm text-gray-600 mt-1">
+              {booking.cancellation_reason}
+            </p>
           )}
         </div>
       )}

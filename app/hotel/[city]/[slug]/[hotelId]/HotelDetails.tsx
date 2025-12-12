@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import Image from 'next/image'
 import type { HotelDetails as HotelDetailsType } from '@/lib/hotel-providers/types'
 import { formatDateDisplay, calculateNights, CITY_NAMES } from '@/lib/url-helpers'
 import { posthog } from '@/lib/posthog'
@@ -139,11 +140,14 @@ export function HotelDetails({
       {/* Image Gallery */}
       {hotel.images && hotel.images.length > 0 && (
         <div className="mb-8">
-          <div className="bg-gray-200 rounded-lg overflow-hidden mb-4">
-            <img
+          <div className="bg-gray-200 rounded-lg overflow-hidden mb-4 relative h-96">
+            <Image
               src={hotel.images[selectedImageIndex]}
               alt={hotel.name}
-              className="w-full h-96 object-cover"
+              fill
+              className="object-cover"
+              sizes="(max-width: 1024px) 100vw, 1024px"
+              priority
             />
           </div>
           {hotel.images.length > 1 && (
@@ -152,11 +156,17 @@ export function HotelDetails({
                 <button
                   key={i}
                   onClick={() => setSelectedImageIndex(i)}
-                  className={`rounded-lg overflow-hidden border-2 transition-all ${
+                  className={`relative rounded-lg overflow-hidden border-2 transition-all h-20 ${
                     selectedImageIndex === i ? 'border-blue-600' : 'border-transparent'
                   }`}
                 >
-                  <img src={image} alt={`${hotel.name} - ${i + 1}`} className="w-full h-20 object-cover" />
+                  <Image
+                    src={image}
+                    alt={`${hotel.name} - ${i + 1}`}
+                    fill
+                    className="object-cover"
+                    sizes="120px"
+                  />
                 </button>
               ))}
             </div>

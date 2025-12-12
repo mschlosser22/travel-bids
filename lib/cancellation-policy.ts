@@ -124,12 +124,13 @@ export function calculateRefundAmount(
   bookingAmount: number,
   checkInDate: Date,
   cancellationDate: Date = new Date()
-): { refundAmount: number; canRefund: boolean; reason?: string } {
+): { refundAmount: number; canRefund: boolean; refundPercentage: number; reason?: string } {
   // Check if cancellation is allowed
   if (!policy.canCancel) {
     return {
       refundAmount: 0,
       canRefund: false,
+      refundPercentage: 0,
       reason: 'Non-refundable booking',
     }
   }
@@ -142,6 +143,7 @@ export function calculateRefundAmount(
       return {
         refundAmount: 0,
         canRefund: false,
+        refundPercentage: 0,
         reason: `Cancellation deadline passed (must cancel ${policy.deadlineHours}hrs before check-in)`,
       }
     }
@@ -153,6 +155,7 @@ export function calculateRefundAmount(
   return {
     refundAmount,
     canRefund: true,
+    refundPercentage: policy.refundPercentage,
   }
 }
 

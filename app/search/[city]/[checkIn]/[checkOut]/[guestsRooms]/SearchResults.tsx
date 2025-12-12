@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import Image from 'next/image'
 import type { HotelResult } from '@/lib/hotel-providers/types'
 import { buildHotelUrl, formatDateDisplay, calculateNights, CITY_NAMES } from '@/lib/url-helpers'
 import { posthog } from '@/lib/posthog'
@@ -157,13 +158,13 @@ export function SearchResults({ searchParams }: SearchResultsProps) {
                 {/* Hotel Image */}
                 <div className="w-full md:w-64 h-48 md:h-auto bg-gradient-to-br from-blue-100 to-blue-200 flex-shrink-0 relative overflow-hidden">
                   {hotel.images && hotel.images.length > 0 ? (
-                    <img
+                    <Image
                       src={hotel.images[0]}
                       alt={hotel.name}
-                      className="w-full h-full object-cover"
-                      onError={(e) => {
-                        e.currentTarget.style.display = 'none'
-                      }}
+                      fill
+                      className="object-cover"
+                      sizes="(max-width: 768px) 100vw, 256px"
+                      loading="lazy"
                     />
                   ) : null}
                   {(!hotel.images || hotel.images.length === 0) && (

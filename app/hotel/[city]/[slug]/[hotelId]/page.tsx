@@ -56,15 +56,6 @@ export default async function HotelPage({
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white border-b border-gray-200">
-        <div className="container mx-auto px-4 py-4">
-          <a href="/" className="text-2xl font-bold text-blue-600">
-            Travel Bids
-          </a>
-        </div>
-      </header>
-
       {/* Hotel Details */}
       <Suspense fallback={<LoadingState />}>
         <HotelDetails

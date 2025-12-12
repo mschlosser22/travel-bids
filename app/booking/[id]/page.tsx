@@ -3,6 +3,8 @@ import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 import { getCancellationPolicy, calculateRefundAmount } from '@/lib/cancellation-policy'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
+import { CancelButton } from './cancel-button'
+import { ConversionTracker } from './conversion-tracker'
 
 // Service role client for unrestricted access (bypasses RLS)
 const supabaseAdmin = createSupabaseClient(
@@ -131,10 +133,20 @@ export default async function BookingDetailsPage({ params }: BookingDetailsProps
   const nights = Math.ceil((checkOut.getTime() - checkIn.getTime()) / (1000 * 60 * 60 * 24))
 
   const isCancelled = !!booking.cancelled_at
-  const canCancel = !isCancelled && booking.status === 'confirmed' && refundInfo.canRefund
+  const isPendingCancellation = booking.status === 'pending_cancellation'
+  const canCancel = !isCancelled && !isPendingCancellation && booking.status === 'confirmed' && refundInfo.canRefund
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* Track conversion for confirmed bookings */}
+      {booking.status === 'confirmed' && (
+        <ConversionTracker
+          bookingId={booking.id}
+          totalAmount={parseFloat(booking.total_price)}
+          currency={booking.currency || 'USD'}
+        />
+      )}
+
       {/* Header */}
       <header className="bg-white shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
@@ -147,6 +159,18 @@ export default async function BookingDetailsPage({ params }: BookingDetailsProps
       {/* Main Content */}
       <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Status Banner */}
+        {isPendingCancellation && (
+          <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 mb-6">
+            <p className="text-orange-800 font-semibold">Cancellation request pending</p>
+            <p className="text-sm text-orange-700 mt-1">
+              We're confirming with the hotel. You'll receive an email within 24 hours.
+            </p>
+            {booking.cancellation_reason && (
+              <p className="text-sm text-orange-600 mt-2">{booking.cancellation_reason}</p>
+            )}
+          </div>
+        )}
+
         {isCancelled && (
           <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
             <p className="text-red-800 font-semibold">This booking has been cancelled</p>
@@ -271,20 +295,10 @@ export default async function BookingDetailsPage({ params }: BookingDetailsProps
 
         {/* Actions */}
         {canCancel && (
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Need to cancel?</h2>
-            <p className="text-sm text-gray-600 mb-4">
-              You can request a cancellation for this booking. Our team will process your request and issue a refund according to the cancellation policy.
-            </p>
-            <form action={`/api/bookings/${booking.id}/cancel`} method="POST">
-              <button
-                type="submit"
-                className="bg-red-600 hover:bg-red-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors"
-              >
-                Request Cancellation
-              </button>
-            </form>
-          </div>
+          <CancelButton
+            bookingId={booking.id}
+            estimatedRefund={refundInfo.refundAmount}
+          />
         )}
       </main>
     </div>
