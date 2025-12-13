@@ -107,12 +107,12 @@ export function createHotelSlug(hotelName: string): string {
 }
 
 /**
- * Generate hotel detail URL: /hotel/{city}/{hotel-slug}/{hotel-id}
+ * Generate hotel detail URL: /hotel/{city}/{hotel-slug}/{canonical-hotel-id}
  */
 export function buildHotelUrl(params: {
   cityCode: string
   hotelName: string
-  providerHotelId: string
+  canonicalHotelId: string
   providerId: string
   checkInDate: string
   checkOutDate: string
@@ -131,7 +131,7 @@ export function buildHotelUrl(params: {
     rooms: params.rooms.toString(),
   })
 
-  return `/hotel/${cityName}/${slug}/${params.providerHotelId}?${searchParams.toString()}`
+  return `/hotel/${cityName}/${slug}/${params.canonicalHotelId}?${searchParams.toString()}`
 }
 
 /**
@@ -144,7 +144,7 @@ export function parseHotelUrl(segments: {
 }): {
   cityCode: string
   slug: string
-  providerHotelId: string
+  canonicalHotelId: string
 } | null {
   try {
     const cityCode = CITY_CODES[segments.city] || segments.city.toUpperCase()
@@ -152,7 +152,7 @@ export function parseHotelUrl(segments: {
     return {
       cityCode,
       slug: segments.slug,
-      providerHotelId: segments.hotelId,
+      canonicalHotelId: segments.hotelId,
     }
   } catch (error) {
     return null

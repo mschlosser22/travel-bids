@@ -3,4 +3,5 @@
 
 export * from './types'
 export * from './amadeus'
+export * from './hotelbeds'
 export * from './provider-manager'

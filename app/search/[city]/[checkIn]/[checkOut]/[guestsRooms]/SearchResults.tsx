@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Image from 'next/image'
-import type { HotelResult } from '@/lib/hotel-providers/types'
+import type { UnifiedHotelListing } from '@/lib/hotel-matching/data-merger'
 import { buildHotelUrl, formatDateDisplay, calculateNights, CITY_NAMES } from '@/lib/url-helpers'
 import { posthog } from '@/lib/posthog'
 
@@ -17,7 +17,7 @@ interface SearchResultsProps {
 }
 
 export function SearchResults({ searchParams }: SearchResultsProps) {
-  const [hotels, setHotels] = useState<HotelResult[]>([])
+  const [hotels, setHotels] = useState<UnifiedHotelListing[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -144,8 +144,8 @@ export function SearchResults({ searchParams }: SearchResultsProps) {
           const hotelUrl = buildHotelUrl({
             cityCode,
             hotelName: hotel.name,
-            providerHotelId: hotel.providerHotelId,
-            providerId: hotel.providerId,
+            canonicalHotelId: hotel.canonicalId,
+            providerId: hotel.selectedProvider.id,
             checkInDate,
             checkOutDate,
             adults,
@@ -153,13 +153,13 @@ export function SearchResults({ searchParams }: SearchResultsProps) {
           })
 
           return (
-            <div key={`${hotel.providerId}-${hotel.providerHotelId}`} className="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow overflow-hidden">
+            <div key={hotel.canonicalId} className="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow overflow-hidden">
               <div className="flex flex-col md:flex-row">
                 {/* Hotel Image */}
                 <div className="w-full md:w-64 h-48 md:h-auto bg-gradient-to-br from-blue-100 to-blue-200 flex-shrink-0 relative overflow-hidden">
                   {hotel.images && hotel.images.length > 0 ? (
                     <Image
-                      src={hotel.images[0]}
+                      src={hotel.images[0].url}
                       alt={hotel.name}
                       fill
                       className="object-cover"
@@ -193,7 +193,6 @@ export function SearchResults({ searchParams }: SearchResultsProps) {
                           ))}
                         </div>
                       )}
-                      <p className="text-gray-600 text-sm mb-2">{hotel.address}</p>
                       {hotel.amenities && hotel.amenities.length > 0 && (
                         <div className="flex flex-wrap gap-2 mt-2">
                           {hotel.amenities.slice(0, 4).map((amenity, i) => (
@@ -225,7 +224,7 @@ export function SearchResults({ searchParams }: SearchResultsProps) {
                     </div>
                     <div className="text-right">
                       <span className="text-sm text-gray-600">
-                        ${hotel.pricePerNight?.toFixed(2) || (hotel.price / nights).toFixed(2)}/night
+                        ${(hotel.price / nights).toFixed(2)}/night
                       </span>
                     </div>
                   </div>
@@ -234,9 +233,9 @@ export function SearchResults({ searchParams }: SearchResultsProps) {
                     href={hotelUrl}
                     onClick={() => {
                       posthog.capture('hotel_clicked', {
-                        hotel_id: hotel.providerHotelId,
+                        canonical_hotel_id: hotel.canonicalId,
                         hotel_name: hotel.name,
-                        provider: hotel.providerId,
+                        provider: hotel.selectedProvider.id,
                         price: hotel.price,
                         city: cityCode,
                         check_in: checkInDate,
@@ -248,12 +247,6 @@ export function SearchResults({ searchParams }: SearchResultsProps) {
                   >
                     View Details
                   </a>
-
-                  {hotel.roomsAvailable != null && hotel.roomsAvailable > 0 && (
-                    <p className="text-xs text-center text-gray-600 mt-2">
-                      {hotel.roomsAvailable} {hotel.roomsAvailable === 1 ? 'room' : 'rooms'} available
-                    </p>
-                  )}
                 </div>
               </div>
             </div>

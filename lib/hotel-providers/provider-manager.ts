@@ -13,6 +13,7 @@ import type {
   CancellationResult
 } from './types'
 import { AmadeusProvider } from './amadeus'
+import { HotelBedsProvider } from './hotelbeds'
 
 // Simple in-memory cache (in production, use Redis)
 interface CacheEntry<T> {
@@ -56,8 +57,16 @@ export class HotelProviderManager {
   private readonly DETAILS_CACHE_TTL = 60 * 60 * 1000 // 1 hour
 
   constructor() {
-    // Register Amadeus as default provider
+    // Register all available providers
     this.registerProvider(new AmadeusProvider())
+
+    // Register HotelBeds if credentials are available
+    try {
+      this.registerProvider(new HotelBedsProvider())
+      console.log('✅ HotelBeds provider registered')
+    } catch (error) {
+      console.log('⚠️  HotelBeds provider not registered (credentials missing)')
+    }
   }
 
   /**

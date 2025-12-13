@@ -1,12 +1,88 @@
-# Travel Bids - Master Project Plan
+# Hotel Reservation Portal - Master Project Plan
 
-**Last Updated:** 2025-12-10
+**Last Updated:** 2025-12-12
 
 ## Project Overview
 
 A hotel room booking platform optimized for Google AdWords conversions. The application targets users searching for specific hotels, providing a generic yet modern booking experience while maximizing conversion rates through AI-driven optimization, A/B testing, and comprehensive user tracking.
 
-## Core Operating Principle: Maximum Automation
+---
+
+## ✅ Completed Features (as of 2025-12-12)
+
+### Core Platform
+- ✅ **Next.js 16 Application** - App Router, Server Components, Turbopack
+- ✅ **Supabase Backend** - PostgreSQL database, Auth, Real-time
+- ✅ **Stripe Payment Integration** - Checkout sessions, webhooks, refunds
+- ✅ **Analytics Setup** - Google Analytics 4, PostHog, Meta Pixel
+- ✅ **Domain & Branding** - hotel-reservation-portal.com configured on Vercel
+- ✅ **Email System** - Resend integration for transactional emails
+
+### Hotel Inventory & Matching
+- ✅ **Amadeus Provider** - Primary hotel inventory (2.9M+ hotels)
+- ✅ **Multi-Provider Architecture** - Abstract interface for adding providers
+- ✅ **AI-Powered Hotel Matching** - RAG system with OpenAI embeddings
+- ✅ **Canonical Hotel Database** - Deduplicate hotels across providers
+- ✅ **Vector Search** - pgvector with IVFFlat index for similarity matching
+- ✅ **Smart Data Merging** - Combine pricing, images, amenities from multiple sources
+- ✅ **High-Confidence Filtering** - Only advertise 99%+ matched hotels (critical for Google Ads)
+- ✅ **Automated Matching Cache** - Redis + database caching for fast lookups
+
+### Booking Flow
+- ✅ **Hotel Search** - City-based search with date range
+- ✅ **Hotel Details** - Room selection, pricing, amenities
+- ✅ **Booking Creation** - Guest information, payment processing
+- ✅ **Booking Management** - View bookings, request cancellations
+- ✅ **Admin Cancellation Flow** - Approve/reject cancellation requests
+- ✅ **Email Notifications** - Confirmations, cancellation requests, approvals
+
+### Documentation
+- ✅ **HOTEL_MATCHING_SYSTEM_DESIGN.md** - Complete architecture documentation
+- ✅ **Test Scripts** - Amadeus API, matching system, search API tests
+
+---
+
+## Core Operating Principles
+
+### 🚨 CRITICAL: Zero Fake Data - Production-Only Mindset
+
+**NON-NEGOTIABLE RULE:** This is a PRODUCTION REVENUE-GENERATING APPLICATION. Every booking, every payment, every transaction is REAL MONEY.
+
+**ABSOLUTELY FORBIDDEN:**
+- ❌ **NEVER create bookings in our database without creating them with the provider first**
+- ❌ **NEVER use mock/fake data in any production code path**
+- ❌ **NEVER create test bookings with fake provider IDs in production database**
+- ❌ **NEVER skip provider API calls "just to test the flow"**
+- ❌ **NEVER use placeholder/dummy data that could be mistaken for real bookings**
+
+**WHY THIS MATTERS:**
+Every fake booking = wasted ad spend + manual reconciliation nightmare + potential revenue loss + customer service disaster
+
+**IF YOU VIOLATE THIS:**
+- We waste every dollar spent on ads driving traffic to hotels we can't actually book
+- We create customer service hell (customers think they booked, but hotel has no record)
+- We have to manually reconcile every single booking instead of running automated business
+- We jeopardize our entire business model and revenue stream
+- **You are not qualified to work on this codebase**
+
+**THE ONLY CORRECT FLOW:**
+```
+1. Customer pays via Stripe (authorize, don't capture)
+2. IMMEDIATELY call provider API to create booking
+3. IF provider succeeds → Capture Stripe payment + Save to database
+4. IF provider fails → Cancel Stripe payment + Show error to customer
+5. NEVER EVER create database record without provider confirmation
+```
+
+**Testing Guidelines:**
+- ✅ Use provider sandbox/test environments for testing
+- ✅ Use separate test database for development
+- ✅ Mark any test data with `is_test: true` flag and NEVER in production DB
+- ✅ Use integration tests that actually call provider test APIs
+- ❌ NEVER create fake bookings in production database
+- ❌ NEVER skip provider API integration "to move faster"
+
+### Maximum Automation
 
 **CRITICAL CONSTRAINT:** We are a small team and MUST automate everything possible. Every feature, integration, and process must be designed for minimal human intervention.
 
@@ -94,10 +170,11 @@ A hotel room booking platform optimized for Google AdWords conversions. The appl
 - **Resend** or **SendGrid** - Transactional emails
 
 ### Hotel Inventory Providers
-- **Amadeus API** - Primary hotel provider (MVP - Phase 1)
-- **Booking.com Affiliate** - Secondary provider (Phase 2)
-- **Expedia/Hotels.com** - Tertiary provider (Phase 2+)
-- **Multi-Provider Abstraction Layer** - Unified interface for all providers
+- **Amadeus API** - Primary hotel provider (MVP - Phase 1) ✅
+- **HotelBeds API** - B2B wholesale rates (Phase 2) ⚡ Ready
+- **Booking.com Affiliate** - Secondary provider (Phase 2+)
+- **Expedia/Hotels.com** - Application rejected ❌
+- **Multi-Provider Abstraction Layer** - Unified interface for all providers ✅
 
 ### AI & LLM
 - **Anthropic Claude API** or **OpenAI** - AI agents for optimization
@@ -1336,9 +1413,10 @@ function calculatePredictionConfidence(opportunity, learnings) {
 - Free sandbox tier for development/testing
 
 **Phase 2 - Multi-Provider (Month 2+)**
+- Add HotelBeds API (B2B wholesale rates, API key acquired) ✅ Ready
 - Add Booking.com Affiliate (3-4% commission, huge inventory)
-- Add Expedia/Hotels.com (similar to Booking.com)
-- Implement result aggregation and price comparison
+- ~~Expedia/Hotels.com~~ - Application rejected ❌
+- Implement result aggregation and price comparison ✅ Done
 
 **Phase 3 - Provider Intelligence (Month 3+)**
 - AI-driven provider selection (best price, conversion rate, margins)
@@ -1467,15 +1545,17 @@ CREATE INDEX idx_provider_performance_name ON provider_performance(provider_name
 
 #### Future Provider Roadmap
 
-**Tier 1 - High Priority (Months 2-3):**
+**Tier 1 - High Priority (Immediate):**
+- HotelBeds (B2B wholesale rates) ✅ API key acquired - Ready to integrate
 - Booking.com Affiliate API
-- Expedia Affiliate (TAAP/EAN)
-- Hotels.com (part of Expedia)
 
-**Tier 2 - Medium Priority (Months 4-6):**
+**Tier 2 - Medium Priority (Months 3-4):**
 - Agoda API (strong in Asia)
-- HotelBeds (B2B wholesale rates)
 - Sabre GDS (good for small/mid-market)
+
+**Rejected/Unavailable:**
+- ~~Expedia Affiliate (TAAP/EAN)~~ - Application rejected ❌
+- ~~Hotels.com (part of Expedia)~~ - Application rejected ❌
 
 **Tier 3 - Advanced (Months 6+):**
 - Direct hotel integrations (high-volume properties)
@@ -1748,17 +1828,25 @@ async function handlePaymentFailure(paymentIntent) {
 - ❌ Customer service goes to Booking.com (good) but no visibility for us (bad)
 - **Decision:** Use only for price comparison, not actual bookings (unless they improve API)
 
-**Expedia TAAP/EAN: ✅ GOOD for Automation**
+**Expedia TAAP/EAN: ❌ Application Rejected**
 - ✅ Full booking API
 - ✅ Automated reconciliation
 - ✅ Webhook support
 - ✅ Instant confirmations
-- ⚠️ Requires approval process (1-2 weeks)
+- ❌ **Application rejected - not approved**
+
+**HotelBeds API: ✅ Ready to Integrate**
+- ✅ B2B wholesale rates (competitive pricing)
+- ✅ API key acquired (ready to use)
+- ✅ Full booking API
+- ✅ 180,000+ hotels worldwide
+- ✅ Self-service integration
 
 **Recommendation for MVP:**
-- **Phase 1:** Amadeus only (self-service, instant access)
-- **Phase 2:** Add Expedia TAAP once approved
+- **Phase 1:** Amadeus only (self-service, instant access) ✅ Done
+- **Phase 2:** Add HotelBeds API (API key acquired) ⚡ Next
 - **Skip:** Booking.com unless they add booking API
+- **Skip:** Expedia (rejected)
 
 #### Stripe Integration Details
 
@@ -2135,13 +2223,16 @@ CREATE INDEX idx_ai_learnings_status ON ai_learnings(status);
 - [x] Prisma ORM configuration
 - [x] PostHog integration
 - [x] UTM tracking and session management
-- [x] **Amadeus API Integration** ✅
+- [x] **Multi-Provider Architecture** ✅
   - [x] Provider abstraction layer (HotelProvider interface) - `lib/hotel-providers/types.ts`
-  - [x] Amadeus SDK setup and authentication - `lib/hotel-providers/amadeus.ts`
-  - [x] Hotel search implementation - Batch processing, city-based search
-  - [x] Hotel details/offers endpoint - Room offers with pricing
-  - [x] Result caching (10 min TTL) - `lib/hotel-providers/provider-manager.ts` + `lib/offer-cache.ts`
-  - [x] Database schema updates (provider fields) - `prisma/schema.prisma`
+  - [x] Amadeus provider implementation - `lib/hotel-providers/amadeus.ts`
+  - [x] HotelBeds provider implementation - `lib/hotel-providers/hotelbeds.ts`
+  - [x] Provider Manager for multi-provider orchestration - `lib/hotel-providers/provider-manager.ts`
+  - [x] Hotel search across all providers with deduplication
+  - [x] GIATA code caching (3-tier: memory, database, API) - `scripts/fetch-hotelbeds-giata.ts`
+  - [x] Canonical hotel matching system - AI-powered RAG with embeddings
+  - [x] Result caching (10 min TTL) - `lib/offer-cache.ts`
+  - [x] Database schema for multi-provider support - `canonical_hotels`, `provider_mappings`
 - [x] Landing page with hotel search
 - [x] Hotel search results page
 - [x] Hotel detail page (dynamic routing)

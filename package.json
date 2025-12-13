@@ -9,7 +9,10 @@
     "lint": "eslint",
     "test:prisma": "dotenv -e .env.local -- tsx scripts/test-prisma.ts",
     "test:amadeus": "dotenv -e .env.local -- tsx scripts/test-amadeus.ts",
-    "test:flow": "dotenv -e .env.local -- tsx scripts/test-flow.ts"
+    "test:flow": "dotenv -e .env.local -- tsx scripts/test-flow.ts",
+    "test:matching": "dotenv -e .env.local -- tsx scripts/test-hotel-matching.ts",
+    "test:hotelbeds": "dotenv -e .env.local -- tsx scripts/test-hotelbeds.ts",
+    "fetch:giata": "dotenv -e .env.local -- tsx scripts/fetch-hotelbeds-giata.ts"
   },
   "dependencies": {
     "@next/third-parties": "^16.0.10",
@@ -24,6 +27,7 @@
     "dotenv": "^17.2.3",
     "js-cookie": "^3.0.5",
     "next": "16.0.8",
+    "openai": "^6.10.0",
     "pg": "^8.16.3",
     "posthog-js": "^1.302.2",
     "react": "19.2.1",

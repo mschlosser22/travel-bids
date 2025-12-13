@@ -1,6 +1,7 @@
 import { Suspense } from 'react'
 import { HotelDetails } from './HotelDetails'
 import { parseHotelUrl } from '@/lib/url-helpers'
+import { createClient } from '@/lib/supabase-server'
 
 export default async function HotelPage({
   params,
@@ -54,12 +55,40 @@ export default async function HotelPage({
     )
   }
 
+  // Look up provider hotel ID from canonical hotel ID
+  const supabase = await createClient()
+  const { data: mapping, error } = await supabase
+    .from('provider_mappings')
+    .select('provider_hotel_id')
+    .eq('canonical_hotel_id', hotelParams.canonicalHotelId)
+    .eq('provider_id', resolvedSearchParams.provider)
+    .single()
+
+  if (error || !mapping) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="bg-white rounded-lg p-8 text-center max-w-md">
+          <h1 className="text-2xl font-bold text-gray-900 mb-4">Hotel Not Available</h1>
+          <p className="text-gray-600 mb-6">
+            This hotel is not available from the selected provider. Please try a different search.
+          </p>
+          <a
+            href="/"
+            className="inline-block bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-6 rounded-lg transition-colors"
+          >
+            Back to Home
+          </a>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Hotel Details */}
       <Suspense fallback={<LoadingState />}>
         <HotelDetails
-          providerHotelId={hotelParams.providerHotelId}
+          providerHotelId={mapping.provider_hotel_id}
           providerId={resolvedSearchParams.provider!}
           cityCode={hotelParams.cityCode}
           checkInDate={resolvedSearchParams.checkIn!}

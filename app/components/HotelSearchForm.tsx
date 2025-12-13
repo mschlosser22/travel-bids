@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { buildSearchUrl } from '@/lib/url-helpers'
 import { CityAutocomplete } from './CityAutocomplete'
+import { DateRangePicker } from './shared/DateRangePicker'
 import type { City } from '@/lib/data/cities'
 
 interface SearchFormData {
@@ -45,10 +46,6 @@ export function HotelSearchForm() {
     router.push(searchUrl)
   }
 
-  // Set minimum dates (today for check-in, tomorrow for check-out)
-  const today = new Date().toISOString().split('T')[0]
-  const tomorrow = new Date(Date.now() + 86400000).toISOString().split('T')[0]
-
   return (
     <form onSubmit={handleSubmit} className="w-full max-w-5xl mx-auto">
       <div className="bg-white rounded-2xl shadow-2xl p-4 sm:p-6 md:p-8">
@@ -67,37 +64,14 @@ export function HotelSearchForm() {
             />
           </div>
 
-          {/* Check-in Date */}
-          <div>
-            <label htmlFor="checkIn" className="block text-sm font-medium text-gray-700 mb-1.5 sm:mb-2">
-              Check-in
-            </label>
-            <input
-              type="date"
-              id="checkIn"
-              required
-              min={today}
-              value={formData.checkInDate}
-              onChange={(e) => setFormData({ ...formData, checkInDate: e.target.value })}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
-          </div>
-
-          {/* Check-out Date */}
-          <div>
-            <label htmlFor="checkOut" className="block text-sm font-medium text-gray-700 mb-1.5 sm:mb-2">
-              Check-out
-            </label>
-            <input
-              type="date"
-              id="checkOut"
-              required
-              min={formData.checkInDate || tomorrow}
-              value={formData.checkOutDate}
-              onChange={(e) => setFormData({ ...formData, checkOutDate: e.target.value })}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
-          </div>
+          <DateRangePicker
+            checkIn={formData.checkInDate}
+            checkOut={formData.checkOutDate}
+            onCheckInChange={(date) => setFormData({ ...formData, checkInDate: date })}
+            onCheckOutChange={(date) => setFormData({ ...formData, checkOutDate: date })}
+            required={true}
+            className="contents"
+          />
 
           {/* Guests */}
           <div>

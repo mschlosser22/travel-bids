@@ -90,12 +90,12 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error('Amadeus API error:', error)
 
-    return NextResponse.json(
-      {
-        error: 'Failed to search cities',
-        results: []
-      },
-      { status: 500 }
-    )
+    // Return empty results instead of 500 error
+    // This prevents autocomplete UI from breaking
+    return NextResponse.json({
+      results: [],
+      source: 'error',
+      error: 'Amadeus API unavailable'
+    })
   }
 }

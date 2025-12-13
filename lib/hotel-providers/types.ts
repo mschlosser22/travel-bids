@@ -119,6 +119,7 @@ export interface BookingParams {
   }
   totalPrice: number
   currency: string
+  metadata?: Record<string, any>  // Provider-specific metadata (e.g., rateKey for HotelBeds)
 }
 
 export interface Booking {

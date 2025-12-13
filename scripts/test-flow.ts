@@ -94,7 +94,7 @@ async function testCompleteFlow() {
     const hotelUrl = buildHotelUrl({
       cityCode: testSearchParams.cityCode,
       hotelName: firstHotel.name,
-      providerHotelId: firstHotel.providerHotelId,
+      canonicalHotelId: firstHotel.providerHotelId,
       providerId: firstHotel.providerId,
       checkInDate: testSearchParams.checkInDate,
       checkOutDate: testSearchParams.checkOutDate,
